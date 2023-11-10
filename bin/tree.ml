@@ -23,14 +23,16 @@ type cstmt =
 
 (* Abstract Domain *)
 type interval = {
-    u : float;
-    l : float
+    l : float;
+    u : float
 } ;;
 
 type eterm = {
     int : interval;
     err : float
 }
+
+type amem = string -> eterm ;;
 
 type aaexp =
     | AVal of eterm

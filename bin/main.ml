@@ -4,6 +4,7 @@ open Tree
 open Printing
 
 (* Abstraction *)
+(* alpha : CStmt -> AStmt *)
 let ulp f = succ f -. f ;;
 let abst_flt f = { int = { u = f ; l = f }; err = ulp f } ;;
 
@@ -33,12 +34,79 @@ let rec abst_stmt exp =
         AFor ((abst_stmt i), (abst_bexp c), (abst_stmt b), (abst_stmt a))
     | CCol  (f, s)       -> ACol ((abst_stmt f), (abst_stmt s)) ;;
 
-(* Testing utils *)
+(* Abstract semantics *)
+
+let max_flt l = List.fold_left max neg_infinity l ;;
+let min_flt l = List.fold_left min infinity l ;;
+
+(* Interval Operators *)
+let intr_add l r = { l = l.l +. r.l ; u = l.u +. r.u } ;;
+let intr_sub l r = { l = l.l -. r.l ; u = l.u -. r.u } ;;
+let intr_mul l r = 
+    { l = min_flt [l.l *. r.l ; l.l *. r.u ; l.u *. r.l ; l.u *. r.l] ; 
+      u = max_flt [l.l *. r.l ; l.l *. r.u ; l.u *. r.l ; l.u *. r.l] } ;;
+let intr_div l r = 
+    { l = min_flt [l.l /. r.l ; l.l /. r.u ; l.u /. r.l ; l.u /. r.l] ; 
+      u = max_flt [l.l /. r.l ; l.l /. r.u ; l.u /. r.l ; l.u /. r.l] } ;;
+
+(* Error Propagation *)
+let mag_lg i = max_flt [(abs i.l) ; (abs i.u)] ;;
+let mag_sm i = min_flt [(abs i.l) ; (abs i.u)] ;;
+
+let ulp_add l r = 0.5 *. ulp ((abs l.int.u) +. (abs r.int.u) +. l.err +. r.err) ;;
+let ulp_sub l r = 0.5 *. ulp ((mag_lg l.int) +. (mag_lg r.int) +. l.err +. r.err) ;;
+let ulp_mul l r = 
+    0.5 *. ulp (((mag_lg l.int) +. l.err) *. ((mag_lg r.int) +. r.err)) ;;
+let ulp_div l r = 
+    0.5 *. ulp (((mag_lg l.int) +. l.err) /. ((mag_sm r.int) +. r.err)) ;;
+
+let err_add l r = l.err +. r.err +. ulp_add l r ;;
+
+let err_sub l r = abs (l.err +. r.err) +. ulp_sub l r ;;
+
+let err_mul l r = 
+    let lup = mag_lg l.int in
+    let rup = mag_lg r.int in
+    lup *. r.err +. rup *. l.err +. l.err *. r.err +. ulp_mul l r ;;
+
+let err_div l r = 
+    let lup = mag_lg l.int in
+    let rup = mag_lg r.int in
+    ((rup *. l.err -. lup *. r.err) /. (rup *. rup +. rup *. r.err)) +.
+    ulp_div l r ;;
+
+
+(* [[A]] : aaexp -> eterm *)
+(*
+let rec asem_aexp exp m =
+    match exp with
+    | AVal e      -> e
+    | AVar n      -> m n
+    | AAdd (l, r) -> (asem_aexp l) (asem_aexp r)
+    | ASub (l, r) -> 
+    | AMul (l, r) -> 
+    | ADiv (l, r) -> 
+
+(* [[B]] : amem -> amem *)
+let asem_bexp exp =
+
+(* [[S]] : astmt -> amem -> amem *)
+let rec asem_stmt exp =
+*)
+     
+
+(* Testing *)
 let test = CCol (CAsgn ("x", CVal 7.2),
                  CIf (CLt (CVar "x", CVal 12.2),
                       CAsgn ("x", CAdd (CVar "x", CVal 5.7)),
                       CAsgn ("x", CMul (CVal 3.1, CVar "x")))) ;;
 
 let abst_test = abst_stmt test ;;
-
 let () = printf "\n\n%s\n\n%s\n" (str_cstmt test) (str_astmt abst_test)
+
+(*
+let x = max_flt [1.1; 4.4; 2.2; 3.3] ;;
+let y = min_flt [2.3; 1.1; 4.4; 2.2; 3.3] ;;
+
+let () = printf "\n\n%f\n" y 
+*)
