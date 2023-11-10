@@ -27,13 +27,26 @@ type interval = {
     u : float
 } ;;
 
-type eterm = {
+type interr = {
     int : interval;
     err : float
-}
+} ;;
 
+type id = Id of string | Const ;;
+type eterm = Bot | Eterm of interr ;;
+
+let eterm_of l u e = Eterm { int = { l = l ; u = u } ; err = e } ;;
+
+(* Abstract Memory *)
 type amem = string -> eterm ;;
 
+let amem_bot x = Bot ;;
+let amem_update n v m = 
+    match n with 
+    | Id id -> fun x -> if id == x then v else m x 
+    | Const -> m ;;
+
+(* Abstract AST *)
 type aaexp =
     | AVal of eterm
     | AVar of string

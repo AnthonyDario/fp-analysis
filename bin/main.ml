@@ -6,11 +6,12 @@ open Printing
 (* Abstraction *)
 (* alpha : CStmt -> AStmt *)
 let ulp f = succ f -. f ;;
+
 let abst_flt f = { int = { u = f ; l = f }; err = ulp f } ;;
 
 let rec abst_aexp exp = 
     match exp with
-    | CVal v      -> AVal (abst_flt v)
+    | CVal v      -> AVal (Eterm (abst_flt v))
     | CVar n      -> AVar n
     | CAdd (l, r) -> AAdd ((abst_aexp l), (abst_aexp r))
     | CSub (l, r) -> ASub ((abst_aexp l), (abst_aexp r))
@@ -64,36 +65,84 @@ let err_add l r = l.err +. r.err +. ulp_add l r ;;
 
 let err_sub l r = abs (l.err +. r.err) +. ulp_sub l r ;;
 
-let err_mul l r = 
+let err_mul l r =
     let lup = mag_lg l.int in
     let rup = mag_lg r.int in
     lup *. r.err +. rup *. l.err +. l.err *. r.err +. ulp_mul l r ;;
 
-let err_div l r = 
+let err_div l r =
     let lup = mag_lg l.int in
     let rup = mag_lg r.int in
     ((rup *. l.err -. lup *. r.err) /. (rup *. rup +. rup *. r.err)) +.
     ulp_div l r ;;
 
+(* eterm operations *)
+let eadd le re = 
+    match le, re with
+    | Eterm l,  Eterm r -> Eterm { int = intr_add l.int r.int ; err = err_add l r }
+    | _, _ -> Bot ;;
+    
+let esub le re = 
+    match le, re with
+    | Eterm l, Eterm r -> Eterm { int = intr_sub l.int r.int ; err = err_sub l r }
+    | _, _ -> Bot ;;
+
+let emul le re = 
+    match le, re with
+    | Eterm l, Eterm r -> Eterm { int = intr_mul l.int r.int ; err = err_mul l r }
+    | _, _ -> Bot ;;
+
+let ediv le re = 
+    match le, re with
+    | Eterm l, Eterm r -> Eterm { int = intr_div l.int r.int ; err = err_div l r }
+    | _, _ -> Bot ;;
 
 (* [[A]] : aaexp -> eterm *)
-(*
 let rec asem_aexp exp m =
     match exp with
-    | AVal e      -> e
-    | AVar n      -> m n
-    | AAdd (l, r) -> (asem_aexp l) (asem_aexp r)
-    | ASub (l, r) -> 
-    | AMul (l, r) -> 
-    | ADiv (l, r) -> 
+    | AVal e      -> (e, Const)
+    | AVar n      -> (m n, Id n)
+    | AAdd (l, r) -> (ediv (fst (asem_aexp l m)) (fst (asem_aexp r m)), Const)
+    | ASub (l, r) -> (esub (fst (asem_aexp l m)) (fst (asem_aexp r m)), Const)
+    | AMul (l, r) -> (emul (fst (asem_aexp l m)) (fst (asem_aexp r m)), Const)
+    | ADiv (l, r) -> (ediv (fst (asem_aexp l m)) (fst (asem_aexp r m)), Const) ;;
+
+(* abstract boolean operators *)
+(* (eterm * Id) * (eterm * Id) -> (eterm * Id) * (eterm * Id) *)
+let alt left right =
+    let (ltrm, lid) = left in
+    let (rtrm, rid) = right in
+    match ltrm, rtrm with
+    | Eterm l, Eterm r ->
+        let { int = { l = ll ; u = lu } ; err = le} = l in 
+        let { int = { l = rl ; u = ru } ; err = re} = r in 
+        if ll > ru then 
+            ((Bot, lid), (Bot, rid)) 
+        else if (rl <= ll) && (ll <= ru) && (ru <= lu) then 
+            ((eterm_of ll ru re, lid), (eterm_of ll ru re, rid))
+        else if (ll <= rl) && (rl <= ru) && (ru <= lu) then
+            ((eterm_of ll ru le, lid), (rtrm, rid))
+        else if (rl <= ll) && (ll <= lu) && (lu <= ru) then
+            ((ltrm, lid), (eterm_of ll ru re, rid))
+        else ((ltrm, lid), (rtrm, rid))
+    | _, _ -> ((Bot, lid), (Bot, rid)) ;;
 
 (* [[B]] : amem -> amem *)
-let asem_bexp exp =
+let asem_bexp exp m =
+    match exp with
+    | ALt (l, r) -> 
+        let ((new_l, lid), (new_r, rid)) = alt (asem_aexp l m) (asem_aexp r m) in
+        amem_update lid new_l (amem_update rid new_r m)
+    | ALe (l, r) -> 
+    | AEq (l, r) ->
+    | ANe (l, r) ->
+    | AGe (l, r) ->
+    | AGt (l, r) ->
 
+(*
 (* [[S]] : astmt -> amem -> amem *)
 let rec asem_stmt exp =
 *)
-     
 
 (* Testing *)
 let test = CCol (CAsgn ("x", CVal 7.2),

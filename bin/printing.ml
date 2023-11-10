@@ -32,14 +32,15 @@ let rec str_cstmt stmt =
 (* Abstract *)
 let rec str_aaexp exp = 
     match exp with
-    | AVal e      -> 
+    | AVal Bot     -> "@"
+    | AVal Eterm e -> 
         "([" ^ Float.to_string e.int.l ^ " ; " ^ Float.to_string e.int.u ^ 
         "], " ^ Float.to_string e.err ^ ")"
-    | AVar n      -> n
-    | AAdd (l, r) -> str_aaexp l ^ " + " ^ str_aaexp r
-    | ASub (l, r) -> str_aaexp l ^ " - " ^ str_aaexp r
-    | AMul (l, r) -> str_aaexp l ^ " * " ^ str_aaexp r
-    | ADiv (l, r) -> str_aaexp l ^ " / " ^ str_aaexp r ;;
+    | AVar n       -> n
+    | AAdd (l, r)  -> str_aaexp l ^ " + " ^ str_aaexp r
+    | ASub (l, r)  -> str_aaexp l ^ " - " ^ str_aaexp r
+    | AMul (l, r)  -> str_aaexp l ^ " * " ^ str_aaexp r
+    | ADiv (l, r)  -> str_aaexp l ^ " / " ^ str_aaexp r ;;
 
 let rec str_abexp exp =
     match exp with
