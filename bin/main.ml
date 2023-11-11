@@ -108,7 +108,8 @@ let rec asem_aexp exp m =
     | ADiv (l, r) -> (ediv (fst (asem_aexp l m)) (fst (asem_aexp r m)), Const) ;;
 
 (* abstract boolean operators *)
-(* (eterm * Id) * (eterm * Id) -> (eterm * Id) * (eterm * Id) *)
+(* TODO: Write functions for the conditions here... *)
+(* "a less than" : (eterm * Id) * (eterm * Id) -> (eterm * Id) * (eterm * Id) *)
 let alt left right =
     let (ltrm, lid) = left in
     let (rtrm, rid) = right in
@@ -116,15 +117,62 @@ let alt left right =
     | Eterm l, Eterm r ->
         let { int = { l = ll ; u = lu } ; err = le} = l in 
         let { int = { l = rl ; u = ru } ; err = re} = r in 
-        if ll > ru then 
+        if ll >= ru then                                    (* l always greater than r *)
             ((Bot, lid), (Bot, rid)) 
-        else if (rl <= ll) && (ll <= ru) && (ru <= lu) then 
-            ((eterm_of ll ru re, lid), (eterm_of ll ru re, rid))
-        else if (ll <= rl) && (rl <= ru) && (ru <= lu) then
+        else if (rl <= ll) && (ll <= ru) && (ru <= lu) then (* l sometimes greater than r *)
+            ((eterm_of ll (ru -. ulp ru) re, lid), 
+             (eterm_of (ll +. ulp ll) ru re, rid))
+        else if (ll <= rl) && (rl <= ru) && (ru <= lu) then (* l contains r *)
+            ((eterm_of ll (ru -. ulp ru) le, lid), 
+             (rtrm, rid))
+        else if (rl <= ll) && (ll <= lu) && (lu <= ru) then (* r contains l *)
+            ((ltrm, lid), 
+             (eterm_of (ll +. ulp ll) ru re, rid))
+        else ((ltrm, lid), (rtrm, rid))                     (* l always/sometimes less than r *)
+    | _, _ -> ((Bot, lid), (Bot, rid)) ;;
+
+let ale left right =
+    let (ltrm, lid) = left in
+    let (rtrm, rid) = right in
+    match ltrm, rtrm with
+    | Eterm l, Eterm r ->
+        let { int = { l = ll ; u = lu } ; err = le} = l in 
+        let { int = { l = rl ; u = ru } ; err = re} = r in 
+        if ll > ru then                                     (* l always greater than r *)
+            ((Bot, lid), (Bot, rid)) 
+        else if (rl <= ll) && (ll <= ru) && (ru <= lu) then (* l sometimes greater than r *)
+            ((eterm_of ll ru re, lid), 
+             (eterm_of ll ru re, rid))
+        else if (ll <= rl) && (rl <= ru) && (ru <= lu) then (* l contains r *)
             ((eterm_of ll ru le, lid), (rtrm, rid))
-        else if (rl <= ll) && (ll <= lu) && (lu <= ru) then
+        else if (rl <= ll) && (ll <= lu) && (lu <= ru) then (* r contains l *)
             ((ltrm, lid), (eterm_of ll ru re, rid))
-        else ((ltrm, lid), (rtrm, rid))
+        else ((ltrm, lid), (rtrm, rid))                     (* l always/sometimes less than r *)
+    | _, _ -> ((Bot, lid), (Bot, rid)) ;;
+
+(* For equality operators we are looking for the overlap of the intervals *)
+let aeq left right =
+    let (ltrm, lid) = left in
+    let (rtrm, rid) = right in
+    match ltrm, rtrm with
+    | Eterm l, Eterm r ->
+        let { int = { l = ll ; u = lu } ; err = le} = l in 
+        let { int = { l = rl ; u = ru } ; err = re} = r in 
+        if (ll > ru) || (rl > lu) then                      (* No overlap *)
+            ((Bot, lid), (Bot, rid)) 
+        else if (rl <= ll) && (ll <= ru) && (ru <= lu) then (* l sometimes greater than r *)
+            ((eterm_of ll ru le, lid), 
+             (eterm_of ll ru re, rid))
+        else if (ll <= rl) && (rl <= lu) && (lu <= ru) then (* r sometimes greater than l *)
+            ((eterm_of rl lu le, lid),
+             (eterm_of rl lu re, rid))
+        else if (ll <= rl) && (rl <= ru) && (ru <= lu) then (* l contains r *)
+            ((eterm_of rl ru le, lid), 
+             (eterm_of rl ru re, rid))
+        else if (rl <= ll) && (ll <= lu) && (lu <= ru) then (* r contains l *)
+            ((eterm_of ll lu le, lid), 
+             (eterm_of ll lu re, rid))
+        else raise (Failure "You didn't cover all the cases of intervals")
     | _, _ -> ((Bot, lid), (Bot, rid)) ;;
 
 (* [[B]] : amem -> amem *)
@@ -134,10 +182,19 @@ let asem_bexp exp m =
         let ((new_l, lid), (new_r, rid)) = alt (asem_aexp l m) (asem_aexp r m) in
         amem_update lid new_l (amem_update rid new_r m)
     | ALe (l, r) -> 
-    | AEq (l, r) ->
-    | ANe (l, r) ->
+        let ((new_l, lid), (new_r, rid)) = ale (asem_aexp l m) (asem_aexp r m) in
+        amem_update lid new_l (amem_update rid new_r m)
+    | AEq (l, r) -> 
+        let ((new_l, lid), (new_r, rid)) = aeq (asem_aexp l m) (asem_aexp r m) in
+        amem_update lid new_l (amem_update rid new_r m)
+    | ANe (l, r) -> m
     | AGe (l, r) ->
-    | AGt (l, r) ->
+        let ((new_r, lid), (new_l, rid)) = ale (asem_aexp r m) (asem_aexp l m) in
+        amem_update lid new_l (amem_update rid new_r m)
+    | AGt (l, r) -> 
+        let ((new_r, lid), (new_l, rid)) = alt (asem_aexp r m) (asem_aexp l m) in
+        amem_update lid new_l (amem_update rid new_r m)
+        
 
 (*
 (* [[S]] : astmt -> amem -> amem *)
