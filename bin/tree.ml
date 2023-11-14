@@ -1,3 +1,5 @@
+open Set
+
 (* Concrete Domain *)
 type caexp =
     | CVal of float
@@ -38,13 +40,30 @@ type eterm = Bot | Eterm of interr ;;
 let eterm_of l u e = Eterm { int = { l = l ; u = u } ; err = e } ;;
 
 (* Abstract Memory *)
-type amem = string -> eterm ;;
+module SS = Set.Make(String) ;;
 
-let amem_bot x = Bot ;;
+type amem = {
+    dom : SS.t ;
+    lookup : string -> eterm
+}
+
+let amem_bot = { dom = SS.empty ; lookup = fun x -> Bot } ;;
+
+(* amem_update : id -> float -> amem -> amem *)
 let amem_update n v m = 
+    let { dom = mdom ; lookup = look } = m in
     match n with 
-    | Id id -> fun x -> if id == x then v else m x 
+    | Id id -> 
+        { dom = SS.add id mdom ; 
+          lookup = fun x -> if id == x then v else look x }
     | Const -> m ;;
+
+(* amem_contains : amem -> string -> bool *)
+let amem_contains m n = 
+    let { dom = _ ; lookup = look } = m in
+    match look n with
+    | Bot -> false
+    | _   -> true ;;
 
 (* Abstract AST *)
 type aaexp =
@@ -62,6 +81,15 @@ type abexp =
     | ANe of aaexp * aaexp
     | AGe of aaexp * aaexp
     | AGt of aaexp * aaexp ;;
+
+let not_abexp abexp = 
+    match abexp with
+    | ALt (l, r) -> AGe (l, r)
+    | ALe (l, r) -> AGt (l, r)
+    | AEq (l, r) -> ANe (l, r)
+    | ANe (l, r) -> AEq (l, r)
+    | AGe (l, r) -> AGe (l, r)
+    | AGt (l, r) -> AGt (l, r) ;;
 
 type astmt = 
     | AAsgn of string * aaexp

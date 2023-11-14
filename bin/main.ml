@@ -44,11 +44,11 @@ let min_flt l = List.fold_left min infinity l ;;
 let intr_add l r = { l = l.l +. r.l ; u = l.u +. r.u } ;;
 let intr_sub l r = { l = l.l -. r.l ; u = l.u -. r.u } ;;
 let intr_mul l r = 
-    { l = min_flt [l.l *. r.l ; l.l *. r.u ; l.u *. r.l ; l.u *. r.l] ; 
-      u = max_flt [l.l *. r.l ; l.l *. r.u ; l.u *. r.l ; l.u *. r.l] } ;;
+    { l = min_flt [l.l *. r.l ; l.l *. r.u ; l.u *. r.l ; l.u *. r.u] ; 
+      u = max_flt [l.l *. r.l ; l.l *. r.u ; l.u *. r.l ; l.u *. r.u] } ;;
 let intr_div l r = 
-    { l = min_flt [l.l /. r.l ; l.l /. r.u ; l.u /. r.l ; l.u /. r.l] ; 
-      u = max_flt [l.l /. r.l ; l.l /. r.u ; l.u /. r.l ; l.u /. r.l] } ;;
+    { l = min_flt [l.l /. r.l ; l.l /. r.u ; l.u /. r.l ; l.u /. r.u] ; 
+      u = max_flt [l.l /. r.l ; l.l /. r.u ; l.u /. r.l ; l.u /. r.u] } ;;
 
 (* Error Propagation *)
 let mag_lg i = max_flt [(abs i.l) ; (abs i.u)] ;;
@@ -79,22 +79,26 @@ let err_div l r =
 (* eterm operations *)
 let eadd le re = 
     match le, re with
-    | Eterm l,  Eterm r -> Eterm { int = intr_add l.int r.int ; err = err_add l r }
+    | Eterm l,  Eterm r -> 
+        Eterm { int = intr_add l.int r.int ; err = err_add l r }
     | _, _ -> Bot ;;
     
 let esub le re = 
     match le, re with
-    | Eterm l, Eterm r -> Eterm { int = intr_sub l.int r.int ; err = err_sub l r }
+    | Eterm l, Eterm r ->
+        Eterm { int = intr_sub l.int r.int ; err = err_sub l r }
     | _, _ -> Bot ;;
 
 let emul le re = 
     match le, re with
-    | Eterm l, Eterm r -> Eterm { int = intr_mul l.int r.int ; err = err_mul l r }
+    | Eterm l, Eterm r ->
+        Eterm { int = intr_mul l.int r.int ; err = err_mul l r }
     | _, _ -> Bot ;;
 
 let ediv le re = 
     match le, re with
-    | Eterm l, Eterm r -> Eterm { int = intr_div l.int r.int ; err = err_div l r }
+    | Eterm l, Eterm r ->
+        Eterm { int = intr_div l.int r.int ; err = err_div l r }
     | _, _ -> Bot ;;
 
 (* [[A]] : aaexp -> eterm *)
@@ -102,7 +106,7 @@ let rec asem_aexp exp m =
     match exp with
     | AVal e      -> (e, Const)
     | AVar n      -> (m n, Id n)
-    | AAdd (l, r) -> (ediv (fst (asem_aexp l m)) (fst (asem_aexp r m)), Const)
+    | AAdd (l, r) -> (eadd (fst (asem_aexp l m)) (fst (asem_aexp r m)), Const)
     | ASub (l, r) -> (esub (fst (asem_aexp l m)) (fst (asem_aexp r m)), Const)
     | AMul (l, r) -> (emul (fst (asem_aexp l m)) (fst (asem_aexp r m)), Const)
     | ADiv (l, r) -> (ediv (fst (asem_aexp l m)) (fst (asem_aexp r m)), Const) ;;
@@ -176,43 +180,94 @@ let aeq left right =
     | _, _ -> ((Bot, lid), (Bot, rid)) ;;
 
 (* [[B]] : amem -> amem *)
-let asem_bexp exp m =
+let asem_bexp exp mem =
+    let { dom = _ ; lookup = m } = mem in
     match exp with
     | ALt (l, r) -> 
         let ((new_l, lid), (new_r, rid)) = alt (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r m)
+        amem_update lid new_l (amem_update rid new_r mem)
     | ALe (l, r) -> 
         let ((new_l, lid), (new_r, rid)) = ale (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r m)
+        amem_update lid new_l (amem_update rid new_r mem)
     | AEq (l, r) -> 
         let ((new_l, lid), (new_r, rid)) = aeq (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r m)
-    | ANe (l, r) -> m
+        amem_update lid new_l (amem_update rid new_r mem)
+    | ANe (l, r) -> mem
     | AGe (l, r) ->
         let ((new_r, lid), (new_l, rid)) = ale (asem_aexp r m) (asem_aexp l m) in
-        amem_update lid new_l (amem_update rid new_r m)
+        amem_update lid new_l (amem_update rid new_r mem)
     | AGt (l, r) -> 
         let ((new_r, lid), (new_l, rid)) = alt (asem_aexp r m) (asem_aexp l m) in
-        amem_update lid new_l (amem_update rid new_r m)
+        amem_update lid new_l (amem_update rid new_r mem)
         
-
-(*
 (* [[S]] : astmt -> amem -> amem *)
-let rec asem_stmt exp =
-*)
+
+(* Define union *)
+(* For now, union includes discontinuities *)
+
+(* u_val : interval -> interval -> interval *)
+let u_val i1 i2 = 
+    let { l = i1l ; u = i1u } = i1 in
+    let { l = i2l ; u = i2u } = i2 in
+    { l = min_flt [i1l ; i2l]; u = max_flt [i1u ; i2u] } ;;
+
+let u_eterm e1 e2 = 
+    match e1, e2 with
+    | Eterm i1, Eterm i2 -> 
+        Eterm { int = (u_val (i1.int) (i2.int));
+                err = max_flt [i1.err ; i2.err] }
+    | Eterm _,  Bot      -> e1
+    | Bot,      Eterm _  -> e2 
+    | Bot,      Bot      -> 
+        raise (Failure "attempting to introduce a new variable during union
+                       operation") ;;
+
+(* u_mem : amem -> amem -> amem *)
+let u_amem mem1 mem2 = 
+    let { dom = dom1 ; lookup = m1 } = mem1 in
+    let { dom = dom2 ; lookup = m2 } = mem2 in
+    let dom3 = SS.union dom1 dom2 in
+    { dom = dom3 ;
+      lookup = fun x -> u_eterm (m1 x) (m2 x) } ;;
+
+(* Define not B *)
+let rec asem_stmt exp m =
+    match exp with
+    | AAsgn (id, e) -> amem_update (Id id) (fst (asem_aexp e m.lookup)) m 
+    | AIf (c, t, e) -> 
+        u_amem (asem_stmt t (asem_bexp c m)) 
+               (asem_stmt e (asem_bexp (not_abexp c) m))
+    (* | AFor (f, c, a, b) -> *)
+    | ACol (s1, s2) -> asem_stmt s2 (asem_stmt s1 m) ;;
 
 (* Testing *)
+(* ---------------------- *)
 let test = CCol (CAsgn ("x", CVal 7.2),
                  CIf (CLt (CVar "x", CVal 12.2),
                       CAsgn ("x", CAdd (CVar "x", CVal 5.7)),
                       CAsgn ("x", CMul (CVal 3.1, CVar "x")))) ;;
 
 let abst_test = abst_stmt test ;;
-let () = printf "\n\n%s\n\n%s\n" (str_cstmt test) (str_astmt abst_test)
 
-(*
-let x = max_flt [1.1; 4.4; 2.2; 3.3] ;;
-let y = min_flt [2.3; 1.1; 4.4; 2.2; 3.3] ;;
+let () = printf "\n\n%s\n" (str_cstmt test)
+let () = printf "\n%s\n" (str_astmt abst_test)
+let () = printf "\n%s\n" (str_amem (asem_stmt abst_test amem_bot))
+let () = printf "------------------\n"
 
-let () = printf "\n\n%f\n" y 
-*)
+(* Testing with parameters *)
+let amem_init = 
+    amem_update (Id "x") 
+                (Eterm { int = { l = 10. ; u = 14. } ; err = 0. }) 
+                amem_bot ;;
+
+let test2 = CIf (CGt (CVar "x", CVal 12.2),
+                 CAsgn ("x", CAdd (CVar "x", CVal 5.7)),
+                 CAsgn ("x", CMul (CVal 3.1, CVar "x"))) ;;
+
+let abst_test2 = abst_stmt test2 ;;
+
+let () = printf "\n%s\n" (str_amem amem_init)
+let () = printf "\n\n%s\n" (str_cstmt test2)
+let () = printf "\n%s\n" (str_astmt abst_test2)
+let () = printf "\n%s\n" (str_amem (asem_stmt abst_test2 amem_init))
+let () = printf "------------------\n"
