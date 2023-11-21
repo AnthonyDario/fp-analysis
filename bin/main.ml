@@ -135,6 +135,10 @@ let alt left right =
         else ((ltrm, lid), (rtrm, rid))                     (* l always/sometimes less than r *)
     | _, _ -> ((Bot, lid), (Bot, rid)) ;;
 
+let agt left right = 
+    let ((new_r, rid), (new_l, lid)) = alt right left in
+    ((new_l, lid), (new_r, rid)) ;;
+
 let ale left right =
     let (ltrm, lid) = left in
     let (rtrm, rid) = right in
@@ -153,6 +157,10 @@ let ale left right =
             ((ltrm, lid), (eterm_of ll ru re, rid))
         else ((ltrm, lid), (rtrm, rid))                     (* l always/sometimes less than r *)
     | _, _ -> ((Bot, lid), (Bot, rid)) ;;
+
+let age left right =
+    let ((new_r, rid), (new_l, lid)) = ale right left in
+    ((new_l, lid), (new_r, rid)) ;;
 
 (* For equality operators we are looking for the overlap of the intervals *)
 let aeq left right =
@@ -194,10 +202,10 @@ let asem_bexp exp mem =
         amem_update lid new_l (amem_update rid new_r mem)
     | ANe (l, r) -> mem
     | AGe (l, r) ->
-        let ((new_r, lid), (new_l, rid)) = ale (asem_aexp r m) (asem_aexp l m) in
+        let ((new_l, lid), (new_r, rid)) = age (asem_aexp l m) (asem_aexp r m) in
         amem_update lid new_l (amem_update rid new_r mem)
     | AGt (l, r) -> 
-        let ((new_r, lid), (new_l, rid)) = alt (asem_aexp r m) (asem_aexp l m) in
+        let ((new_l, lid), (new_r, rid)) = agt (asem_aexp l m) (asem_aexp r m) in
         amem_update lid new_l (amem_update rid new_r mem)
         
 (* [[S]] : astmt -> amem -> amem *)
