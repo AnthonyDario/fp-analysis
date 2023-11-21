@@ -211,8 +211,6 @@ let asem_bexp exp mem =
 (* [[S]] : astmt -> amem -> amem *)
 
 (* Define union *)
-(* For now, union includes discontinuities *)
-
 (* u_val : interval -> interval -> interval *)
 let u_val i1 i2 = 
     let { l = i1l ; u = i1u } = i1 in
@@ -238,7 +236,6 @@ let u_amem mem1 mem2 =
     { dom = dom3 ;
       lookup = fun x -> u_eterm (m1 x) (m2 x) } ;;
 
-(* Define not B *)
 let rec asem_stmt exp m =
     match exp with
     | AAsgn (id, e) -> amem_update (Id id) (fst (asem_aexp e m.lookup)) m 
