@@ -61,7 +61,10 @@ let ulp_mul l r =
 let ulp_div l r = 
     0.5 *. ulp (((mag_lg l.int) +. l.err) /. ((mag_sm r.int) +. r.err)) ;;
 
-let err_add l r = l.err +. r.err +. ulp_add l r ;;
+let err_add l r = 
+    match l.err, r.err with
+    | le, re when not (is_finite le) || not (is_finite re) -> infinity
+    | le, re -> le +. re +. ulp_add l r ;;
 
 let err_sub l r = abs (l.err +. r.err) +. ulp_sub l r ;;
 
