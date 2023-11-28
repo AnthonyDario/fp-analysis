@@ -1,4 +1,5 @@
 open Float
+open Round
 open Tree
 
 (* Abstraction *)
@@ -39,14 +40,18 @@ let max_flt l = List.fold_left max neg_infinity l ;;
 let min_flt l = List.fold_left min infinity l ;;
 
 (* Interval Operators *)
-let intr_add l r = { l = l.l +. r.l ; u = l.u +. r.u } ;;
-let intr_sub l r = { l = l.l -. r.u ; u = l.u -. r.l } ;;
+let intr_add l r = { l = add Down l.l r.l ; u = add Up l.u r.u } ;;
+let intr_sub l r = { l = sub Down l.l r.u ; u = sub Up l.u r.l } ;;
 let intr_mul l r = 
-    { l = min_flt [l.l *. r.l ; l.l *. r.u ; l.u *. r.l ; l.u *. r.u] ; 
-      u = max_flt [l.l *. r.l ; l.l *. r.u ; l.u *. r.l ; l.u *. r.u] } ;;
+    { l = min_flt [mul Down l.l r.l ; mul Down l.l r.u ;
+                   mul Down l.u r.l ; mul Down l.u r.u] ; 
+      u = max_flt [mul Up l.l r.l ; mul Up l.l r.u ; 
+                   mul Up l.u r.l ; mul Up l.u r.u] } ;;
 let intr_div l r = 
-    { l = min_flt [l.l /. r.l ; l.l /. r.u ; l.u /. r.l ; l.u /. r.u] ; 
-      u = max_flt [l.l /. r.l ; l.l /. r.u ; l.u /. r.l ; l.u /. r.u] } ;;
+    { l = min_flt [div Down l.l r.l ; div Down l.l r.u ;
+                   div Down l.u r.l ; div Down l.u r.u] ; 
+      u = max_flt [div Up l.l r.l ; div Up l.l r.u ; 
+                   div Up l.u r.l ; div Up l.u r.u] } ;;
 
 (* Error Propagation *)
 let mag_lg i = max_flt [(abs i.l) ; (abs i.u)] ;;
@@ -201,7 +206,7 @@ let asem_bexp exp mem =
     | AEq (l, r) -> 
         let ((new_l, lid), (new_r, rid)) = aeq (asem_aexp l m) (asem_aexp r m) in
         amem_update lid new_l (amem_update rid new_r mem)
-    | ANe (l, r) -> mem
+    | ANe _ -> mem
     | AGe (l, r) ->
         let ((new_l, lid), (new_r, rid)) = age (asem_aexp l m) (asem_aexp r m) in
         amem_update lid new_l (amem_update rid new_r mem)
@@ -251,11 +256,11 @@ let w_val i1 i2 =
     match i1, i2 with
     | { l = i1l; u = i1u }, { l = i2l; u = i2u } when i1l > i2l && i1u < i2u ->
         { l = neg_infinity; u = infinity }
-    | { l = i1l; u = i1u }, { l = i2l; u = i2u } when i1l > i2l ->
+    | { l = i1l; u = _ }, { l = i2l; u = i2u } when i1l > i2l ->
         { l = neg_infinity; u = i2u }
-    | { l = i1l; u = i1u }, { l = i2l; u = i2u } when i1u < i2u ->
+    | { l = _; u = i1u }, { l = i2l; u = i2u } when i1u < i2u ->
         { l = i2l; u = infinity }
-    | { l = i1l; u = i1u }, { l = i2l; u = i2u } ->
+    | { l = _; u = _ }, { l = i2l; u = i2u } ->
         { l = i2l; u = i2u } ;;
 
 let w_err e1 e2 = if e2 > e1 then infinity else e2 ;;
@@ -263,8 +268,8 @@ let w_eterm e1 e2 =
     match e1, e2 with
     | Eterm i1, Eterm i2 ->
         Eterm { int = w_val i1.int i2.int; err = w_err i1.err i2.err }
-    | Eterm i1, Bot -> e1  
-    | Bot, Eterm i2 -> e2
+    | Eterm _, Bot -> e1  
+    | Bot, Eterm _ -> e2
     | Bot, Bot -> Bot ;;
 
 (* TODO: Right now I'm sorta ignoring if x not in one of the memories.  

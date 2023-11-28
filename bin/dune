@@ -1,4 +1,5 @@
 (executable
  (public_name analyzer)
  (name main)
- (libraries analyzer))
+ (libraries analyzer round ))
+

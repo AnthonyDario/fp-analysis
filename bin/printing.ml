@@ -11,7 +11,7 @@ let rec str_caexp exp =
     | CMul (l, r) -> str_caexp l ^ " * " ^ str_caexp r
     | CDiv (l, r) -> str_caexp l ^ " / " ^ str_caexp r ;;
 
-let rec str_cbexp exp =
+let str_cbexp exp =
     match exp with
     | CLt (l, r) -> str_caexp l ^ " < "  ^ str_caexp r
     | CLe (l, r) -> str_caexp l ^ " <= " ^ str_caexp r
@@ -54,7 +54,7 @@ let rec str_aaexp exp =
     | AMul (l, r) -> str_aaexp l ^ " * " ^ str_aaexp r
     | ADiv (l, r) -> str_aaexp l ^ " / " ^ str_aaexp r ;;
 
-let rec str_abexp exp =
+let str_abexp exp =
     match exp with
     | ALt (l, r) -> str_aaexp l ^ " < "  ^ str_aaexp r
     | ALe (l, r) -> str_aaexp l ^ " <= " ^ str_aaexp r
@@ -75,6 +75,6 @@ let rec str_astmt stmt =
 
 let str_avar n amem = n ^ " -> " ^ str_eterm (amem.lookup n) 
 
-let rec str_amem amem =
+let str_amem amem =
     fold_left (fun acc x -> acc ^ "\n" ^ (str_avar x amem))
               "" (SS.elements amem.dom) ;;

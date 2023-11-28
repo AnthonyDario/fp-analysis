@@ -1,5 +1,3 @@
-open Set
-
 (* Concrete Domain *)
 type caexp =
     | CVal of float
@@ -47,7 +45,7 @@ type amem = {
     lookup : string -> eterm
 }
 
-let amem_bot = { dom = SS.empty ; lookup = fun x -> Bot } ;;
+let amem_bot = { dom = SS.empty ; lookup = fun _ -> Bot } ;;
 
 (* amem_update : id -> float -> amem -> amem *)
 let amem_update n v m = 
