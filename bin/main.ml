@@ -293,17 +293,19 @@ let rec abst_iter f m n =
 
 let comp f g x = f (g x) ;;
 
-let rec asem_stmt exp m =
+let rec asem_stmt exp is m =
     match exp with
     | AAsgn (id, e) -> amem_update (Id id) (fst (asem_aexp e m.lookup)) m 
     | AIf (c, t, e) -> 
-        u_amem (asem_stmt t (asem_bexp c m)) 
-               (asem_stmt e (asem_bexp (not_abexp c) m))
+        u_amem (asem_stmt t is (asem_bexp c m)) 
+               (asem_stmt e is (asem_bexp (not_abexp c) m))
     | AFor (f, c, a, b) -> 
-        let body = comp (asem_stmt a) (comp (asem_stmt b) (asem_bexp c)) in
-        asem_bexp (not_abexp c) (abst_iter body (asem_stmt f m) 20)
-    | ACol (s1, s2) -> asem_stmt s2 (asem_stmt s1 m) ;;
+        let body = comp (asem_stmt a is) 
+                        (comp (asem_stmt b is) (asem_bexp c)) in
+        asem_bexp (not_abexp c) (abst_iter body (asem_stmt f is m) is)
+    | ACol (s1, s2) -> asem_stmt s2 is (asem_stmt s1 is m) ;;
 
+let abst_interp exp m = asem_stmt exp 20 m ;;
 (* Testing *)
 (* ---------------------- *)
 
@@ -311,7 +313,7 @@ let runtest exp amem =
     let aexp = abst_stmt exp in
     printf "\n\n%s\n" (str_cstmt exp) ;
     printf "\n%s\n" (str_astmt aexp) ;
-    printf "\n%s\n" (str_amem (asem_stmt aexp amem)) ;
+    printf "\n%s\n" (str_amem (abst_interp aexp amem)) ;
     printf "------------------\n" ;;
 
 let test = CCol (CAsgn ("x", CVal 7.2),
