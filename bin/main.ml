@@ -236,28 +236,87 @@ let u_amem mem1 mem2 =
     { dom = dom3 ;
       lookup = fun x -> u_eterm (m1 x) (m2 x) } ;;
 
+(* For loops require finding a fixpoint *)
+(* fixpoint : ('a -> 'a) -> 'a -> 'a *)
+let rec fixpoint f i = 
+    let next = f i in
+    if next = i
+    then next
+    else fixpoint f next ;;
+
+(* We don't _need_ to widen since we have a lattice of finite height (floating
+   points numbers are not infinite), however in practice it is too tall. *)
+let w_val i1 i2 =
+    match i1, i2 with
+    | { l = i1l; u = i1u }, { l = i2l; u = i2u } when i1l > i2l && i1u < i2u ->
+        { l = neg_infinity; u = infinity }
+    | { l = i1l; u = i1u }, { l = i2l; u = i2u } when i1l > i2l ->
+        { l = neg_infinity; u = i2u }
+    | { l = i1l; u = i1u }, { l = i2l; u = i2u } when i1u < i2u ->
+        { l = i2l; u = infinity }
+    | { l = i1l; u = i1u }, { l = i2l; u = i2u } ->
+        { l = i2l; u = i2u } ;;
+
+let w_err e1 e2 = if e2 > e1 then infinity else e2 ;;
+let w_eterm e1 e2 = 
+    match e1, e2 with
+    | Eterm i1, Eterm i2 ->
+        Eterm { int = w_val i1.int i2.int; err = w_err i1.err i2.err }
+    | Eterm i1, Bot -> e1  
+    | Bot, Eterm i2 -> e2
+    | Bot, Bot -> Bot ;;
+
+(* TODO: Right now I'm sorta ignoring if x not in one of the memories.  
+   Logic is handled in w_eterm, which will probably fall over. *)
+(* w_amem : amem -> amem -> amem *)
+let w_amem mem1 mem2 =
+    let { dom = dom1 ; lookup = m1 } = mem1 in
+    let { dom = dom2 ; lookup = m2 } = mem2 in
+    let dom3 = SS.union dom1 dom2 in
+    { dom = dom3 ;
+      lookup = fun x -> w_eterm (m1 x) (m2 x) } ;;
+
+(* OCaml's structural equality here _should_ work *)
+let rec abst_iter f m n = 
+    if n = 0 then m else
+    let next = f m in
+    let widened = w_amem m next in
+    if widened = m then 
+        widened
+    else
+        (printf "widening with: %s\n%!" (str_amem widened) ;
+        flush stdout ;
+        abst_iter f widened (n - 1)) ;;
+
+let comp f g x = f (g x) ;;
+
 let rec asem_stmt exp m =
     match exp with
     | AAsgn (id, e) -> amem_update (Id id) (fst (asem_aexp e m.lookup)) m 
     | AIf (c, t, e) -> 
         u_amem (asem_stmt t (asem_bexp c m)) 
                (asem_stmt e (asem_bexp (not_abexp c) m))
-    (* | AFor (f, c, a, b) -> *)
+    | AFor (f, c, a, b) -> 
+        let body = comp (asem_stmt a) (comp (asem_stmt b) (asem_bexp c)) in
+        asem_bexp (not_abexp c) (abst_iter body (asem_stmt f m) 20)
     | ACol (s1, s2) -> asem_stmt s2 (asem_stmt s1 m) ;;
 
 (* Testing *)
 (* ---------------------- *)
+
+let runtest exp amem =
+    let aexp = abst_stmt exp in
+    printf "\n\n%s\n" (str_cstmt exp) ;
+    printf "\n%s\n" (str_astmt aexp) ;
+    printf "\n%s\n" (str_amem (asem_stmt aexp amem)) ;
+    printf "------------------\n" ;;
+
 let test = CCol (CAsgn ("x", CVal 7.2),
                  CIf (CLt (CVar "x", CVal 12.2),
                       CAsgn ("x", CAdd (CVar "x", CVal 5.7)),
                       CAsgn ("x", CMul (CVal 3.1, CVar "x")))) ;;
 
-let abst_test = abst_stmt test ;;
-
-let () = printf "\n\n%s\n" (str_cstmt test)
-let () = printf "\n%s\n" (str_astmt abst_test)
-let () = printf "\n%s\n" (str_amem (asem_stmt abst_test amem_bot))
-let () = printf "------------------\n"
+let () = runtest test amem_bot ;;
 
 (* Testing with parameters *)
 let amem_init = 
@@ -269,10 +328,13 @@ let test2 = CIf (CGt (CVar "x", CVal 12.2),
                  CAsgn ("x", CAdd (CVar "x", CVal 5.7)),
                  CAsgn ("x", CMul (CVal 3.1, CVar "x"))) ;;
 
-let abst_test2 = abst_stmt test2 ;;
+let () = runtest test2 amem_init ;;
 
-let () = printf "\n%s\n" (str_amem amem_init)
-let () = printf "\n\n%s\n" (str_cstmt test2)
-let () = printf "\n%s\n" (str_astmt abst_test2)
-let () = printf "\n%s\n" (str_amem (asem_stmt abst_test2 amem_init))
-let () = printf "------------------\n"
+(* Testing widening *)
+let test3 = CFor (CAsgn ("i", CVal 0.),
+                  CLt (CVar "i", CVal 10.),
+                  CAsgn ("i", CAdd (CVar "i", CVal 1.)),
+                  CAsgn ("x", CAdd (CVar "x", CVal 1.))) ;;
+
+let abst_test3 = abst_stmt test3 ;;
+let () = runtest test3 amem_init ;;
