@@ -42,7 +42,7 @@ let min_flt l = List.fold_left min infinity l ;;
 
 (* Interval Operators *)
 let intr_add l r = { l = l.l +. r.l ; u = l.u +. r.u } ;;
-let intr_sub l r = { l = l.l -. r.l ; u = l.u -. r.u } ;;
+let intr_sub l r = { l = l.l -. r.u ; u = l.u -. r.l } ;;
 let intr_mul l r = 
     { l = min_flt [l.l *. r.l ; l.l *. r.u ; l.u *. r.l ; l.u *. r.u] ; 
       u = max_flt [l.l *. r.l ; l.l *. r.u ; l.u *. r.l ; l.u *. r.u] } ;;
