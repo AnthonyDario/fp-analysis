@@ -1,3 +1,9 @@
+open List
+open Util
+open Interval
+open Interr
+open Eterm
+
 (* Concrete Domain *)
 type caexp =
     | CVal of float
@@ -22,24 +28,13 @@ type cstmt =
     | CCol  of cstmt * cstmt ;;
 
 (* Abstract Domain *)
-type interval = {
-    l : float;
-    u : float
-} ;;
-
-type interr = {
-    int : interval;
-    err : float
-} ;;
 
 type id = Id of string | Const ;;
-type eterm = Bot | Eterm of interr ;;
-
-let eterm_of l u e = Eterm { int = { l = l ; u = u } ; err = e } ;;
 
 (* Abstract Memory *)
 module SS = Set.Make(String) ;;
 
+(* Memory modeled as a function.  The domain is tracked. *)
 type amem = {
     dom : SS.t ;
     lookup : string -> eterm

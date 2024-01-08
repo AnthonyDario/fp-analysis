@@ -1,5 +1,9 @@
 open List
+
 open Tree
+open Interval
+open Interr
+open Eterm
 
 (* Concrete Domain *)
 let rec str_caexp exp = 
@@ -39,8 +43,11 @@ let str_interr ie =
 
 let str_eterm trm = 
     match trm with
-    | Eterm ie -> str_interr ie
-    | Bot      -> "_" ;;
+    | Eterm ies -> (fold_left (fun acc s -> ", " ^ s) 
+                              "{" 
+                              (map str_interr ies))
+                    ^ "}"
+    | Bot       -> "_" ;;
 
 let rec str_aaexp exp = 
     match exp with

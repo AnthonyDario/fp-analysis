@@ -20,7 +20,7 @@ let test = CCol (CAsgn ("x", CVal 7.2),
 (* Testing with parameters *)
 let amem_init = 
     amem_update (Id "x") 
-                (Eterm { int = { l = 10. ; u = 14. } ; err = 0. }) 
+                (Eterm [{ int = { l = 10. ; u = 14. } ; err = 0. }]) 
                 amem_bot ;;
 
 let test2 = CIf (CGt (CVar "x", CVal 12.2),
