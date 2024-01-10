@@ -38,17 +38,24 @@ let mag_sm i = min_flt [(abs i.l) ; (abs i.u)] ;;
 (* Boolean Operators *)
 (* Returns the new values of the operands *)
 let intr_lt l r = 
-    let lu = min_flt [l.u ; r.u] in
-    let rl = max_flt [l.l ; r.l] in
-    (intr_of l.l (lu -. (ulp lu)), intr_of (rl +. ulp rl) r.u) ;;
+    let lu = min_flt [l.u ; r.u -. ulp r.u] in
+    let rl = max_flt [l.l +. ulp l.l ; r.l] in
+    (intr_of l.l lu, intr_of rl r.u) ;;
 
 let intr_le l r =
     let lu = min_flt [l.u ; r.u] in
     let rl = max_flt [l.l ; r.l] in
     (intr_of l.l lu, intr_of rl r.u) ;;
 
-let intr_gt l r = let (new_r, new_l) = intr_le r l in (new_l, new_r) ;;
-let intr_ge l r = let (new_r, new_l) = intr_lt r l in (new_l, new_r) ;;
+let intr_gt l r = 
+    let ll = max_flt [l.l ; r.l +. ulp r.l] in
+    let ru = min_flt [r.u ; l.u -. ulp l.u] in
+    (intr_of ll l.u, intr_of r.l ru) ;;
+
+let intr_ge l r = 
+    let ll = max_flt [l.l ; r.l] in
+    let ru = min_flt [l.u ; r.u] in
+    (intr_of ll l.u, intr_of r.l ru) ;;
 
 let intr_eq l r = 
     let new_intr = intr_of (max_flt [l.l ; r.l]) (min_flt [l.u ; r.u]) in
