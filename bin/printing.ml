@@ -29,7 +29,7 @@ let rec str_cstmt stmt =
     | CAsgn (n, v)       -> n ^ " = " ^ str_caexp v
     | CIf   (b, t, e)    -> 
         "if " ^ str_cbexp b ^ "\nthen " ^ str_cstmt t ^ "\nelse " ^ str_cstmt e
-    | CFor  (i, c, b, a) ->
+    | CFor  (i, c, a, b) ->
         "for (" ^ str_cstmt i ^ "; " ^ str_cbexp c ^ "; " ^ str_cstmt a ^ ")\n" ^
         str_cstmt b
     | CCol  (f, s)       -> str_cstmt f ^ ";\n" ^ str_cstmt s ;;
@@ -43,7 +43,7 @@ let str_interr ie =
 
 let str_eterm trm = 
     match trm with
-    | Eterm ies -> (fold_left (fun acc s -> ", " ^ s) 
+    | Eterm ies -> (fold_left (fun acc s -> acc ^ s ^ ", ") 
                               "{" 
                               (map str_interr ies))
                     ^ "}"
@@ -75,7 +75,7 @@ let rec str_astmt stmt =
     | AAsgn (n, v)       -> n ^ " = " ^ str_aaexp v
     | AIf   (b, t, e)    -> 
         "if " ^ str_abexp b ^ "\nthen " ^ str_astmt t ^ "\nelse " ^ str_astmt e
-    | AFor  (i, c, b, a) ->
+    | AFor  (i, c, a, b) ->
         "for (" ^ str_astmt i ^ "; " ^ str_abexp c ^ "; " ^ str_astmt a ^ ")\n" ^
         str_astmt b
     | ACol  (f, s)       -> str_astmt f ^ ";\n" ^ str_astmt s ;;
