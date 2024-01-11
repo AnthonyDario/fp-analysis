@@ -90,7 +90,7 @@ let intr_ge_test =
 
 let intr_eq_test = 
     let out = intr_of i1.l i3.u in
-    test_bool (intr_eq i1 i3) (out, out) ;;
+    test_bool (intr_eq i1 i3) (out, out) "intr_eq test failed" ;;
 
 let intr_neq_test = 
     test_bool (intr_neq i1 i2) (i1, i2) "intr_neq test failed" ;;
@@ -104,7 +104,114 @@ let intr_without_test =
     (* Perhaps we need to offset by ulp here? *)
     test_eq (intr_without i5 i1) [intr_of 1. 2. ; intr_of 4. 5.] 
         "intr_without failed containing test" ;
-    test_eq (intr_without i3 i1) [intr_of 1. 2.] ;;
+    test_eq (intr_without i3 i1) [intr_of 1. 2.] 
+        "intr_without failed overlap test" ;;
+
+(* Interr Testing *)
+(* ---------------------- *)
+let ie1 = interr_of 2. 4. 0.03;;
+let ie2 = interr_of 4. 8. 0.101;;
+let ie3 = interr_of 1. 3. 0.004;;
+let ie4 = interr_of (-5.) 3. 0.0002 ;;
+let ie5 = interr_of 1. 5. 0.00202;;
+
+let interr_of_test = 
+    test_eq ie1 { int = { l = 2. ; u = 4. }; err = 0.03 } 
+        "interr_of failed test" ;
+    test_eq (interr_of 3. 2. 0.0001) interr_bot 
+        "interr_of did not produce bottom from negative interval" ;
+    test_eq (interr_of 1. 2. (-1.)) interr_bot 
+        "interr_of did not produce bottom from negative error" ;;
+
+let interr_overlap_test = 
+    test (interr_overlap ie1 ie3)
+        "interr_overlap did not identifiy overlapping segments" ;
+    test (not (interr_overlap ie2 ie4))
+        "interr_overlap misidentified unoverlapping segments" ;;
+ 
+let ie_op_tests =
+    test_eq (ie_add ie1 ie2) (interr_of 6. 12. (err_add ie1 ie2)) 
+        "ie_add failed" ;
+    test_eq (ie_sub ie1 ie2) (interr_of (-6.) 0. (err_sub ie1 ie2))
+        "ie_sub failed" ;
+    test_eq (ie_mul ie1 ie2) (interr_of 8. 32. (err_mul ie1 ie2))
+        "ie_mul failed" ;
+    test_eq (ie_div ie2 ie1) (interr_of 1. 4. (err_div ie2 ie1))
+        "ie_div failed" ;;
+
+let ie_lt_test =
+    test_bool (ie_lt ie3 ie1) (ie3, ie1) "ie_lt failed no-change test" ;
+    test_bool (ie_lt ie1 ie4) 
+              (interr_of ie1.int.l (ie4.int.u -. ulp ie4.int.u) ie1.err, 
+               interr_of (ie1.int.l +. ulp ie1.int.l) ie4.int.u ie4.err)
+              "ie_lt failed boundary test" ;
+    test_bool (ie_lt ie5 ie1) 
+              (interr_of ie5.int.l (ie1.int.u -. ulp ie1.int.u) ie5.err, ie1) 
+              "intr_lt failed overlap test" ;; 
+
+let ie_le_test =
+    test_bool (ie_le ie3 ie1) (ie3, ie1) "ie_le failed no-change test" ;
+    test_bool (ie_le ie1 ie4) (interr_of ie1.int.l ie4.int.u ie1.err,
+                               interr_of ie1.int.l ie4.int.u ie4.err)
+              "ie_le failed boundary test" ;
+    test_bool (ie_le ie5 ie1) (interr_of ie5.int.l ie1.int.u ie5.err, ie1) 
+              "ie_le failed overlap test" ;; 
+
+let ie_gt_test =
+    test_bool (ie_gt ie3 ie1) (interr_of (ie1.int.l +. ulp ie1.int.l) ie3.int.u ie3.err,
+                               interr_of ie1.int.l (ie3.int.u -. ulp ie3.int.u) ie1.err)
+              "ie_gt failed overlap test" ;
+    test_bool (ie_gt ie2 ie1) (ie2, ie1) "ie_gt failed no-change test" ;;
+    test_bool (ie_gt ie5 ie1) 
+              (interr_of (ie1.int.l +. ulp ie1.int.l) ie5.int.u ie5.err, ie1) 
+              "ie_gt failed overlap test" ;;
+
+let ie_ge_test =
+    test_bool (ie_ge ie3 ie1) 
+              (interr_of ie1.int.l ie3.int.u ie3.err,
+               interr_of ie1.int.l ie3.int.u ie1.err)
+              "ie_ge failed overlap test" ;
+    test_bool (ie_ge ie2 ie1) (ie2, ie1) "ie_ge failed no-change test" ;;
+    test_bool (ie_ge ie5 ie1) (interr_of ie1.int.l ie5.int.u ie5.err, ie1) 
+              "ie_ge failed overlap test" ;;
+
+let ie_eq_test = 
+    let out1 = interr_of ie1.int.l ie3.int.u ie1.err in
+    let out2 = interr_of ie1.int.l ie3.int.u ie3.err in
+    test_bool (ie_eq ie1 ie3) (out1, out2) "ie_eq failed test" ;;
+
+let ie_neq_test = 
+    test_bool (ie_neq ie1 ie2) (ie1, ie2) "ie_neq test failed" ;;
+
+let test_in vals lst m =
+    test (fold_left (fun acc i -> acc && exists (fun x -> i = x) lst)
+                      true vals) 
+         m ;;
+
+let ie_without_test =
+    test_in [ ie3 ] (ie_without ie3 ie2) "ie_without failed no-change test" ;
+    (* Perhaps we need to offset by ulp here? *)
+    test_in [ interr_of ie5.int.l ie1.int.l ie5.err ; 
+              interr_of ie1.int.u ie5.int.u ie5.err ] (ie_without ie5 ie1) 
+        "ie_without failed containing test" ;
+    test_in [ interr_of ie3.int.l ie1.int.l ie3.err ] (ie_without ie3 ie1) 
+        "ie_without failed overlap test" ;;
+
+let ie_union_test = 
+    test_in [ie1 ; ie2] (ie_union ie1 ie2) "ie_union failed no-change test" ;
+    test_in (ie1 :: (ie_without ie5 ie1)) (ie_union ie5 ie1) 
+        "ie_union overlap test failed" ;;
+
+(* Error Testing *)
+(* TODO!!!!! *)
+
+(* Eterm Testing *)
+(* ---------------------- *)
+let x = Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ] ;;
+let y = Eterm [ interr_of 1. 3. 0.001 ; interr_of 3. 6. 0.011 ] ;;
+
+let test_range = assert (range x = intr_of 2. 8.) ;;
+
 
 (* Interpreter Testing *)
 (* ---------------------- *)

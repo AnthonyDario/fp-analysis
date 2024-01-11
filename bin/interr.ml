@@ -13,7 +13,7 @@ type interr = {
 
 let interr_bot = { int = intr_bot ; err = 0. } ;;
 let interr_of l u err = 
-    if l > u 
+    if l > u || err < 0.
     then interr_bot 
     else { int = intr_of l u ; err = err } ;;
 
@@ -50,13 +50,13 @@ let ie_add x y =
     { int = intr_add x.int y.int ; err = err_add x y } ;;
 
 let ie_sub x y = 
-    { int = intr_sub x.int y.int ; err = err_add x y } ;;
+    { int = intr_sub x.int y.int ; err = err_sub x y } ;;
 
 let ie_mul x y = 
-    { int = intr_mul x.int y.int ; err = err_add x y } ;;
+    { int = intr_mul x.int y.int ; err = err_mul x y } ;;
 
 let ie_div x y = 
-    { int = intr_div x.int y.int ; err = err_add x y } ;;
+    { int = intr_div x.int y.int ; err = err_div x y } ;;
 
 (* Boolean operators *)
 (* Return the new values of the operands *)
@@ -69,11 +69,11 @@ let ie_le l r =
     (interr_of li.l li.u l.err, interr_of ri.l ri.u r.err) ;;
 
 let ie_gt l r = 
-    let (ri, li) = intr_le r.int l.int in
+    let (li, ri) = intr_gt l.int r.int in
     (interr_of li.l li.u l.err, interr_of ri.l ri.u r.err) ;;
 
 let ie_ge l r = 
-    let (ri, li) = intr_lt r.int l.int in
+    let (li, ri) = intr_ge l.int r.int in
     (interr_of li.l li.u l.err, interr_of ri.l ri.u r.err) ;;
 
 let ie_eq l r =
