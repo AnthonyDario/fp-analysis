@@ -20,12 +20,12 @@ let interr_of l u err =
 let interr_overlap ie1 ie2 = intr_overlap ie1.int ie2.int ;;
 
 (* Dealing with error *)
-let ulp_add l r = 0.5 *. ulp ((abs l.int.u) +. (abs r.int.u) +. l.err +. r.err) ;;
-let ulp_sub l r = 0.5 *. ulp ((mag_lg l.int) +. (mag_lg r.int) +. l.err +. r.err) ;;
+let ulp_add l r = 0.5 *. ulp ((abs l.int.u) +. (abs r.int.u)) ;;
+let ulp_sub l r = 0.5 *. ulp ((mag_lg l.int) +. (mag_lg r.int)) ;;
 let ulp_mul l r = 
-    0.5 *. ulp (((mag_lg l.int) +. l.err) *. ((mag_lg r.int) +. r.err)) ;;
+    0.5 *. ulp ((mag_lg l.int) *. (mag_lg r.int)) ;;
 let ulp_div l r = 
-    0.5 *. ulp (((mag_lg l.int) +. l.err) /. ((mag_sm r.int) +. r.err)) ;;
+    0.5 *. ulp ((mag_lg l.int) /. (mag_sm r.int)) ;;
 
 let err_add l r = 
     match l.err, r.err with
