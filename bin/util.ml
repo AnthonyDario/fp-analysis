@@ -1,7 +1,8 @@
 open Float
 open List
 
-(* product_map f [a1; ...; an] [b1; ...; bm] = [f a1 b1; f a1 b2; ...; f an bm] *)
+(* product_map f [a1; ...; an] [b1; ...; bm] = 
+   [f a1 b1; f a1 b2; ... f a2 b1 ; f a2 b2 ; ... ; f an bm] *)
 (* 'a -> 'b -> 'c -> 'a list -> 'b list -> 'c list *)
 let product_map f xs ys = concat_map (fun x -> map (fun y -> f x y) ys) xs;;
 

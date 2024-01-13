@@ -242,6 +242,20 @@ let err_tests =
         (ulp_div ie2 ie1))
         "err_div failed test" ;;
 
+(* Util Testing *)
+(* ---------------------- *)
+
+let xs = [ 1 ; 1 ; 2 ; ] ;;
+let ys = [ 2 ; 4 ; 8 ; ] ;;
+let out = [ 3 ; 5 ; 9 ; 3 ; 5; 9 ; 4 ; 6 ; 10 ];;
+let product_map_test =
+    test_in out (product_map (+) xs ys) "product_map failed test" ;;
+
+let extremes_test test = 
+    let lst = [ 5. ; 6. ; 1.4; 2.2 ] in
+    test_eq 1.4 (min_flt lst) "min_flt failed test" ;
+    test_eq 6. (max_flt lst) "max_flt failed test" ;;
+
 (* Eterm Testing *)
 (* ---------------------- *)
 let x = Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ] ;;
