@@ -202,8 +202,45 @@ let ie_union_test =
     test_in (ie1 :: (ie_without ie5 ie1)) (ie_union ie5 ie1) 
         "ie_union overlap test failed" ;;
 
+
 (* Error Testing *)
-(* TODO!!!!! *)
+let ulp_op_test = 
+    test_eq (ulp_add ie1 ie2) (0.5 *. ulp (4. +. 8.))
+        "ulp_add failed test" ;
+    test_eq (ulp_sub ie1 ie2) (0.5 *. ulp (4. +. 8.))
+        "ulp_sub failed test" ;
+    test_eq (ulp_mul ie1 ie2) (0.5 *. ulp (4. *. 8.))
+        "ulp_mul failed test" ;
+    test_eq (ulp_div ie1 ie2) (0.5 *. ulp (4. /. 4.))
+        "ulp_div failed test" ;;
+
+(*
+let () =
+    printf "%20.20f = %20.20f\n" 
+        (err_div ie2 ie1)
+        ((((4. *. 0.101) -. (8. *. 0.03)) /. ((4. *. 4.) +. (4. *. 0.03))) +. 
+         (ulp_div ie2 ie1)) ;
+    printf "%B\n" (infinity = infinity) ;;
+    printf "%s = %s\n" (Float.to_string (ulp_mul ie1 ie2)) 
+                       (Float.to_string (0.5 *. ulp (4. *. 8.)) ;;
+*)
+                       
+(* TODO: Look into potentially negative error here? Probably need an absolute value... *)
+let err_tests =
+    test_eq (err_add ie1 ie2) (ie1.err +. ie2.err +. (ulp_add ie1 ie2)) 
+        "err_add failed test" ;
+    test_eq (err_add ie1 (interr_of 1. 2. infinity)) infinity 
+        "err_add failed infinity test";
+    test_eq (err_sub ie1 ie2) (ie1.err +. ie2.err +. (ulp_sub ie1 ie2))
+        "err_sub failed test" ;
+    test_eq (err_mul ie1 ie2) 
+        ((4. *. 0.101) +. (8. *. 0.03) +. (0.03 *. 0.101) +. 
+        (ulp_mul ie1 ie2))
+        "err_mul failed test" ;
+    test_eq (err_div ie2 ie1)
+        ((((4. *. 0.101) -. (8. *. 0.03)) /. ((4. *. 4.) +. (4. *. 0.03))) +. 
+        (ulp_div ie2 ie1))
+        "err_div failed test" ;;
 
 (* Eterm Testing *)
 (* ---------------------- *)
