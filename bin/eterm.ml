@@ -67,10 +67,10 @@ let chop eterm range comp =
                         (map (fun x -> fst (comp x dummy)) ies))
     | Bot -> Bot ;;
 
-let eterm_lt l r = (chop l (range r) ie_lt, chop r (range l) ie_ge) ;;
-let eterm_le l r = (chop l (range r) ie_le, chop r (range l) ie_gt) ;;
-let eterm_gt l r = let (new_r, new_l) = eterm_le r l in (new_l, new_r) ;;
-let eterm_ge l r = let (new_r, new_l) = eterm_lt r l in (new_l, new_r) ;;
+let eterm_lt l r = (chop l (range r) ie_lt, chop r (range l) ie_gt) ;;
+let eterm_le l r = (chop l (range r) ie_le, chop r (range l) ie_ge) ;;
+let eterm_gt l r = (chop l (range r) ie_gt, chop r (range l) ie_lt) ;;
+let eterm_ge l r = (chop l (range r) ie_ge, chop r (range l) ie_le) ;;
 let eterm_eq l r = (chop l (range r) ie_eq, chop r (range l) ie_eq) ;; 
 let eterm_neq l r = (l, r) ;;
 

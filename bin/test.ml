@@ -16,9 +16,19 @@ let test_eq a1 a2 m = test (a1 = a2) m ;;
 let test_in vals lst =
     (fold_left (fun acc i -> acc && exists (fun x -> i = x) lst)
                       true vals) ;;
+                      
+let test_tuple input output tst m = 
+    let (in1, in2) = input in
+    let (out1, out2) = output in
+    tst in1 out1 (m ^ " on first operand") ;
+    tst in2 out2 (m ^ " on second operand") ;;
 
-let test_lst lst vals m = test (test_in vals lst && test_in lst vals ) m ;;
+let test_bool input output m = test_tuple input output test_eq m ;;
+
+let equal_lsts lst vals = (test_in vals lst && test_in lst vals) ;;
+let test_lst lst vals m = test (equal_lsts lst vals) m ;;
 let test_ets et1 et2 m = test_lst (get_segs et1) (get_segs et2) m ;;
+let test_ets_b input output m = test_tuple input output test_ets m ;;
 
 (* Interval Testing *)
 (* ---------------------- *)
@@ -61,11 +71,6 @@ let intr_mags_test =
     test_eq (mag_sm i1) 2. "mag_sm failed" ;
     test_eq (mag_sm i4) 3. "mag_sm failed with negative numbers" ;;
 
-let test_bool input output m = 
-    let (in1, in2) = input in
-    let (out1, out2) = output in
-    test_eq in1 out1 (m ^ " on first operand") ;
-    test_eq in2 out2 (m ^ " on second operand") ;;
 
 let intr_lt_test =
     test_bool (intr_lt i3 i1) (i3, i1) "intr_lt failed no-change test" ;
@@ -272,6 +277,7 @@ let extremes_test test =
 (* ---------------------- *)
 let x = Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ] ;;
 let y = Eterm [ interr_of 1. 3. 0.001 ; interr_of 3. 6. 0.011 ] ;;
+let z = Eterm [ interr_of 1. 5. 0.013 ; interr_of 5. 10. 0.017 ] ;;
 
 let range_tests = 
     test_eq (range x) (intr_of 2. 8.) "range failed happy path test" ;
@@ -289,7 +295,6 @@ let append_test =
     let out = Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ; 
                       interr_of 1. 3. 0.001 ; interr_of 3. 6. 0.011 ] in
     test_eq (eterm_append x (get_segs y)) out "eterm_append test failed" ;;
-
 
 let merge_test =
     let test = eterm_append x (get_segs y) in 
@@ -329,6 +334,74 @@ let eterm_arith_tests =
                        interr_of (4. /. 3.) 8. (err_div x2 y1) ;
                        interr_of (4. /. 6.) (8. /. 3.) (err_div x2 y2)]))
         "ediv failed test" ;;
+
+let eterm_lt_test = 
+    test_ets_b (eterm_lt x y) 
+               (Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. (6. -. ulp 6.) 0.01 ],
+                Eterm [ interr_of (2. +. ulp 2.) 3. 0.001 ; interr_of 3. 6. 0.011 ])
+               "eterm_lt failed remove top test" ;
+    test_ets_b (eterm_lt y x) 
+               (Eterm [ interr_of 1. 3. 0.001 ; interr_of 3. 6. 0.011 ],
+                Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ])
+               "eterm_lt failed no change test" ;
+    test_ets_b (eterm_lt z x) 
+               (Eterm [ interr_of 1. 5. 0.013 ; interr_of 5. (8. -. ulp 8.) 0.017 ],
+                Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ])
+               "eterm_lt failed contain test" ;;
+
+let eterm_le_test = 
+    test_ets_b (eterm_le x y) 
+               (Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 6. 0.01 ],
+                Eterm [ interr_of 2. 3. 0.001 ; interr_of 3. 6. 0.011 ])
+               "eterm_le failed remove top test" ;
+    test_ets_b (eterm_le y x) 
+               (Eterm [ interr_of 1. 3. 0.001 ; interr_of 3. 6. 0.011 ],
+                Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ])
+               "eterm_le failed no change test" ;
+    test_ets_b (eterm_le z x) 
+               (Eterm [ interr_of 1. 5. 0.013 ; interr_of 5. 8. 0.017 ],
+                Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ])
+               "eterm_le failed contain test" ;;
+
+let eterm_gt_test = 
+    test_ets_b (eterm_gt x y) 
+               (Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ],
+                Eterm [ interr_of 1. 3. 0.001 ; interr_of 3. 6. 0.011 ])
+               "eterm_gt failed no-change top test" ;
+    test_ets_b (eterm_gt y x) 
+               (Eterm [ interr_of (2. +. ulp 2.) 3. 0.001 ; interr_of 3. 6. 0.011 ],
+                Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. (6. -. ulp 6.) 0.01 ])
+               "eterm_gt failed remove bottom test" ;
+    test_ets_b (eterm_gt z x) 
+               (Eterm [ interr_of (2. +. ulp 2.) 5. 0.013 ; interr_of 5. 10. 0.017 ],
+                Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ])
+               "eterm_gt failed contain test" ;;
+
+let eterm_ge_test = 
+    test_ets_b (eterm_ge x y) 
+               (Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ],
+                Eterm [ interr_of 1. 3. 0.001 ; interr_of 3. 6. 0.011 ])
+               "eterm_ge failed no-change top test" ;
+    test_ets_b (eterm_ge y x) 
+               (Eterm [ interr_of 2. 3. 0.001 ; interr_of 3. 6. 0.011 ],
+                Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 6. 0.01 ])
+               "eterm_ge failed remove bottom test" ;
+    test_ets_b (eterm_ge z x) 
+               (Eterm [ interr_of 2. 5. 0.013 ; interr_of 5. 10. 0.017 ],
+                Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ])
+               "eterm_ge failed contain test" ;;
+
+let eterm_eq_test = 
+    test_ets_b (eterm_eq x y) 
+               (Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 6. 0.01 ],
+                Eterm [ interr_of 2. 3. 0.001 ; interr_of 3. 6. 0.011 ]) 
+               "eterm_eq failed overlap test" ;
+    test_ets_b (eterm_eq x z)
+               (Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ],
+                Eterm [ interr_of 2. 5. 0.013 ; interr_of 5. 8. 0.017 ]) 
+               "eterm_eq failed contains test" ;;
+    
+let eterm_neq_test = test_ets_b (eterm_neq x y) (x, y) "eterm_neq failed test" ;;
 
 (* Interpreter Testing *)
 (* ---------------------- *)
