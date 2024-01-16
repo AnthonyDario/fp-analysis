@@ -302,23 +302,6 @@ let merge_test =
                interr_of 4. 6. 0.011 ; interr_of 6. 8. 0.01 ])
             "merge failed test" ;;
 
-(*
-let () = 
-    let x1, x2 = (interr_of 2. 4. 0.02, interr_of 4. 8. 0.01) in
-    let y1, y2 = (interr_of 1. 3. 0.001, interr_of 4. 6. 0.011) in
-    printf "%s\n\n%s" 
-        (str_eterm (eadd x y)) 
-        (str_eterm 
-        (merge (Eterm [interr_of 3. 5. (err_add x1 y1) ;
-                       interr_of 5. 10. (err_add x1 y2) ;
-                       interr_of 5. 12. (err_add x2 y1) ;
-                       interr_of 7. 14. (err_add x2 y2)]))) ;;
-*)
-
-(* 
- * ([2 ; 4], 0.02) ([4; 8], 0.01)
- * ([1 ; 3], 0.001) ([3 ; 6], 0.011) 
- *)
 let eterm_arith_tests = 
     let x1, x2 = (interr_of 2. 4. 0.02, interr_of 4. 8. 0.01) in
     let y1, y2 = (interr_of 1. 3. 0.001, interr_of 4. 6. 0.011) in

@@ -57,9 +57,8 @@ let esub le re = eop le re ie_sub ;;
 let emul le re = eop le re ie_mul ;;
 let ediv le re = eop le re ie_div ;;
 
-
 (* Boolean operators *)
-(* Chops based open interr comparison function passed in *)
+(* Chops based upen interr comparison function passed in *)
 let chop eterm range comp =
     match eterm with
     | Eterm ies ->
