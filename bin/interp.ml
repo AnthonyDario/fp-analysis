@@ -176,4 +176,4 @@ let rec asem_stmt exp is m =
         asem_bexp (not_abexp c) (abst_iter body (asem_stmt f is m) is)
     | ACol (s1, s2) -> asem_stmt s2 is (asem_stmt s1 is m) ;;
 
-let abst_interp exp m = asem_stmt exp 20 m ;;
+let abst_interp exp m = asem_stmt exp 3 m ;;

@@ -11,7 +11,10 @@ type interval = {
 } ;;
 
 let intr_bot = { l = 1. ; u = -1.} ;;
+(* inclusive *)
 let intr_of l u = if l > u then intr_bot else {l = l ; u = u} ;;
+(* exclusive *)
+let intr_of_exc l u = if l >= u then intr_bot else {l = l ; u = u} ;;
 
 (* Useful utils *)
 let contains i v = i.l <= v && i.u >= v ;;
@@ -70,9 +73,13 @@ let intr_union i1 i2 =
     let { l = i2l ; u = i2u } = i2 in
     { l = min_flt [i1l ; i2l]; u = max_flt [i1u ; i2u] } ;;
 
+(* without i6 i1 
+   without [ 2 ; 4 ] [ 1 ; 4 ] -> []
+*)
+
 (* Remove i2 from i1, produces a list of intervals *)
 let intr_without i1 i2 =
     filter (fun x -> x != intr_bot)
-           (if i1.l < i2.l 
-            then [ intr_of i1.l (min_flt [i2.l ; i1.u]) ; intr_of i2.u i1.u]
-            else [ intr_of (max_flt [i2.u ; i1.l]) i1.u ]) ;;
+           (if i1.l < i2.l
+            then [ intr_of_exc i1.l (min_flt [i2.l ; i1.u]) ; intr_of_exc i2.u i1.u ]
+            else [ intr_of_exc (max_flt [i2.u ; i1.l]) i1.u ]) ;;

@@ -8,6 +8,9 @@ open Interr
 type eterm = Bot | Eterm of interr list ;;
 let eterm_of l u e = Eterm [interr_of l u e] ;;
 
+(* Utilities *)
+(* ------------------------- *)
+
 (* Get the range of the eterm as an interval *)
 let range et = 
     match et with
@@ -15,17 +18,45 @@ let range et =
                      u = max_flt (map (fun ie -> ie.int.u) ies) }
     | Bot       -> intr_bot ;;
 
+(* Utility to get the range as a segment datatype *)
+let range_ie et = 
+    let intr = range et in
+    interr_of intr.l intr.u 0.0 ;;
+
+let get_segs et = 
+    match et with
+    | Eterm ies -> ies
+    | Bot -> [] ;;
+
+let eterm_append et ies = 
+    match et with
+    | Eterm errs -> Eterm (errs @ ies)
+    | Bot -> 
+        (match ies with
+         | [] -> Bot
+         | _  -> Eterm ies) ;;
+
 (* Arithmetic operators *)
+(* ------------------------- *)
+let merge et = 
+    let err_first = sort (fun ie1 ie2 -> Float.compare ie2.err ie1.err) (get_segs et) in
+    match err_first with
+    | x :: xs ->
+        fold_left (fun acc ie -> eterm_append acc (ie_without ie (range_ie acc))) 
+                  (Eterm [x]) xs
+    | [] -> Bot ;;
+
 (* eterm -> eterm -> eterm list *)
 let eop le re op =
     match le, re with
-    | Eterm ls, Eterm rs -> Eterm (product_map op ls rs)
+    | Eterm ls, Eterm rs -> merge (Eterm (product_map op ls rs))
     | _, _ -> Bot ;;
 
 let eadd le re = eop le re ie_add ;;
 let esub le re = eop le re ie_sub ;;
 let emul le re = eop le re ie_mul ;;
 let ediv le re = eop le re ie_div ;;
+
 
 (* Boolean operators *)
 (* Chops based open interr comparison function passed in *)

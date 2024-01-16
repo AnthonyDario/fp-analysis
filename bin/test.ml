@@ -9,8 +9,16 @@ open Interr
 open Interval
 open Util
 
+(* Testing functions *)
 let test b m = if not b then failwith m ;;
 let test_eq a1 a2 m = test (a1 = a2) m ;;
+
+let test_in vals lst =
+    (fold_left (fun acc i -> acc && exists (fun x -> i = x) lst)
+                      true vals) ;;
+
+let test_lst lst vals m = test (test_in vals lst && test_in lst vals ) m ;;
+let test_ets et1 et2 m = test_lst (get_segs et1) (get_segs et2) m ;;
 
 (* Interval Testing *)
 (* ---------------------- *)
@@ -19,6 +27,7 @@ let i2 = intr_of 4. 8. ;;
 let i3 = intr_of 1. 3. ;;
 let i4 = intr_of (-5.) 3. ;;
 let i5 = intr_of 1. 5. ;;
+let i6 = intr_of 3. 4. ;;
 
 let intr_of_test =
     test_eq i1 { l = 2. ; u = 4. }
@@ -99,13 +108,21 @@ let intr_union_test =
     test_eq (intr_union i1 i2) (intr_of i1.l i2.u) "intr_union test failed" ;
     test_eq (intr_union i5 i1) i5 "intr_union overlap test failed" ;;
 
+
+let () = 
+    printf "%s\n" (fold_left (fun a x -> a ^ (str_interval x)) "" (intr_without i6 i1)) ;;
+
 let intr_without_test =
     test_eq (intr_without i3 i2) [i3] "intr_without failed no-change test" ;
     (* Perhaps we need to offset by ulp here? *)
     test_eq (intr_without i5 i1) [intr_of 1. 2. ; intr_of 4. 5.] 
         "intr_without failed containing test" ;
     test_eq (intr_without i3 i1) [intr_of 1. 2.] 
-        "intr_without failed overlap test" ;;
+        "intr_without failed overlap test" ;
+    test_eq (intr_without i1 i5) [] 
+        "intr_without failed enveloped test" ;
+    test_eq (intr_without i6 i1) [] 
+        "intr_without failed boundary test" ;;
 
 (* Interr Testing *)
 (* ---------------------- *)
@@ -183,23 +200,18 @@ let ie_eq_test =
 let ie_neq_test = 
     test_bool (ie_neq ie1 ie2) (ie1, ie2) "ie_neq test failed" ;;
 
-let test_in vals lst m =
-    test (fold_left (fun acc i -> acc && exists (fun x -> i = x) lst)
-                      true vals) 
-         m ;;
-
 let ie_without_test =
-    test_in [ ie3 ] (ie_without ie3 ie2) "ie_without failed no-change test" ;
+    test_lst [ ie3 ] (ie_without ie3 ie2) "ie_without failed no-change test" ;
     (* Perhaps we need to offset by ulp here? *)
-    test_in [ interr_of ie5.int.l ie1.int.l ie5.err ; 
+    test_lst [ interr_of ie5.int.l ie1.int.l ie5.err ; 
               interr_of ie1.int.u ie5.int.u ie5.err ] (ie_without ie5 ie1) 
         "ie_without failed containing test" ;
-    test_in [ interr_of ie3.int.l ie1.int.l ie3.err ] (ie_without ie3 ie1) 
+    test_lst [ interr_of ie3.int.l ie1.int.l ie3.err ] (ie_without ie3 ie1) 
         "ie_without failed overlap test" ;;
 
 let ie_union_test = 
-    test_in [ie1 ; ie2] (ie_union ie1 ie2) "ie_union failed no-change test" ;
-    test_in (ie1 :: (ie_without ie5 ie1)) (ie_union ie5 ie1) 
+    test_lst [ie1 ; ie2] (ie_union ie1 ie2) "ie_union failed no-change test" ;
+    test_lst (ie1 :: (ie_without ie5 ie1)) (ie_union ie5 ie1) 
         "ie_union overlap test failed" ;;
 
 
@@ -249,7 +261,7 @@ let xs = [ 1 ; 1 ; 2 ; ] ;;
 let ys = [ 2 ; 4 ; 8 ; ] ;;
 let out = [ 3 ; 5 ; 9 ; 3 ; 5; 9 ; 4 ; 6 ; 10 ];;
 let product_map_test =
-    test_in out (product_map (+) xs ys) "product_map failed test" ;;
+    test_lst out (product_map (+) xs ys) "product_map failed test" ;;
 
 let extremes_test test = 
     let lst = [ 5. ; 6. ; 1.4; 2.2 ] in
@@ -261,8 +273,79 @@ let extremes_test test =
 let x = Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ] ;;
 let y = Eterm [ interr_of 1. 3. 0.001 ; interr_of 3. 6. 0.011 ] ;;
 
-let test_range = assert (range x = intr_of 2. 8.) ;;
+let range_tests = 
+    test_eq (range x) (intr_of 2. 8.) "range failed happy path test" ;
+    test_eq (range Bot) intr_bot "range failed bot test" ;
+    test_eq (range_ie x) (interr_of 2. 8. 0.0) "range_ie failed happy path test" ;
+    test_eq (range_ie Bot) interr_bot "range_ie failed bot test" ;;
 
+let get_segs_test =
+    test_eq (get_segs x) [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ] 
+        "get_segs happy path failed" ;
+    test_eq (get_segs Bot) [] 
+        "get_segs bot test failed" ;;
+
+let append_test = 
+    let out = Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ; 
+                      interr_of 1. 3. 0.001 ; interr_of 3. 6. 0.011 ] in
+    test_eq (eterm_append x (get_segs y)) out "eterm_append test failed" ;;
+
+
+let merge_test =
+    let test = eterm_append x (get_segs y) in 
+    let happy_test = Eterm [ interr_of 0. 1. 0.1 ; interr_of 1. 2. 0.2 ] in
+    test_lst (get_segs (merge happy_test))
+            (get_segs happy_test)
+            "merge failed no-change test" ;
+    test_lst (get_segs (merge test))
+            ([ interr_of 1. 2. 0.001 ; interr_of 2. 4. 0.02 ; 
+               interr_of 4. 6. 0.011 ; interr_of 6. 8. 0.01 ])
+            "merge failed test" ;;
+
+(*
+let () = 
+    let x1, x2 = (interr_of 2. 4. 0.02, interr_of 4. 8. 0.01) in
+    let y1, y2 = (interr_of 1. 3. 0.001, interr_of 4. 6. 0.011) in
+    printf "%s\n\n%s" 
+        (str_eterm (eadd x y)) 
+        (str_eterm 
+        (merge (Eterm [interr_of 3. 5. (err_add x1 y1) ;
+                       interr_of 5. 10. (err_add x1 y2) ;
+                       interr_of 5. 12. (err_add x2 y1) ;
+                       interr_of 7. 14. (err_add x2 y2)]))) ;;
+*)
+
+(* 
+ * ([2 ; 4], 0.02) ([4; 8], 0.01)
+ * ([1 ; 3], 0.001) ([3 ; 6], 0.011) 
+ *)
+let eterm_arith_tests = 
+    let x1, x2 = (interr_of 2. 4. 0.02, interr_of 4. 8. 0.01) in
+    let y1, y2 = (interr_of 1. 3. 0.001, interr_of 4. 6. 0.011) in
+    test_ets (eadd x y) 
+        (merge (Eterm [interr_of 3. 5. (err_add x1 y1) ;
+                       interr_of 5. 10. (err_add x1 y2) ;
+                       interr_of 5. 12. (err_add x2 y1) ;
+                       interr_of 7. 14. (err_add x2 y2)]))
+        "eadd failed test" ;
+    test_ets (esub x y) 
+        (merge (Eterm [interr_of (-1.) 3. (err_sub x1 y1) ;
+                       interr_of (-4.) 1. (err_sub x1 y2) ;
+                       interr_of 1. 7. (err_sub x2 y1) ;
+                       interr_of (-2.) 5. (err_sub x2 y2)]))
+        "esub failed test" ;
+    test_ets (emul x y) 
+        (merge (Eterm [interr_of 2. 12. (err_mul x1 y1) ;
+                       interr_of 6. 24. (err_mul x1 y2) ;
+                       interr_of 4. 24. (err_mul x2 y1) ;
+                       interr_of 12. 48. (err_mul x2 y2)]))
+        "emul failed test" ;
+    test_ets (ediv x y) 
+        (merge (Eterm [interr_of (2. /. 3.) 4. (err_div x1 y1) ;
+                       interr_of (2. /. 6.) (4. /. 3.) (err_div x1 y2) ;
+                       interr_of (4. /. 3.) 8. (err_div x2 y1) ;
+                       interr_of (4. /. 6.) (8. /. 3.) (err_div x2 y2)]))
+        "ediv failed test" ;;
 
 (* Interpreter Testing *)
 (* ---------------------- *)
@@ -282,7 +365,7 @@ let test = CCol (CAsgn ("x", CVal 7.2),
 (* Testing with parameters *)
 let amem_init = 
     amem_update (Id "x") 
-                (Eterm []) 
+                (Eterm [{int = {l = 10. ; u = 14. } ; err = 0. }]) 
                 amem_bot ;;
 
 let test2 = CIf (CGt (CVar "x", CVal 12.2),
