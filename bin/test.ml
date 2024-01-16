@@ -27,6 +27,7 @@ let test_bool input output m = test_tuple input output test_eq m ;;
 
 let equal_lsts lst vals = (test_in vals lst && test_in lst vals) ;;
 let test_lst lst vals m = test (equal_lsts lst vals) m ;;
+let test_tup_lst ins outs = test_tuple ins outs test_lst ;;
 let test_ets et1 et2 m = test_lst (get_segs et1) (get_segs et2) m ;;
 let test_ets_b input output m = test_tuple input output test_ets m ;;
 
@@ -57,7 +58,9 @@ let intr_overlap_test =
     test (intr_overlap i1 i2)
          "intr_overlap doesn't identify intervals it same boundary" ;
     test (not (intr_overlap i2 i3))
-         "intr_overlap identifies non-overlapping intervals" ;; 
+         "intr_overlap identifies non-overlapping intervals" ; 
+    test (intr_overlap i1 i5) 
+        "intr_overlap doesn't identify containing overlap" ;;
 
 let intr_ops_test =
     test_eq (intr_add i1 i2) (intr_of 6. 12.) "intr_add failed" ;
@@ -113,10 +116,6 @@ let intr_union_test =
     test_eq (intr_union i1 i2) (intr_of i1.l i2.u) "intr_union test failed" ;
     test_eq (intr_union i5 i1) i5 "intr_union overlap test failed" ;;
 
-
-let () = 
-    printf "%s\n" (fold_left (fun a x -> a ^ (str_interval x)) "" (intr_without i6 i1)) ;;
-
 let intr_without_test =
     test_eq (intr_without i3 i2) [i3] "intr_without failed no-change test" ;
     (* Perhaps we need to offset by ulp here? *)
@@ -149,7 +148,9 @@ let interr_overlap_test =
     test (interr_overlap ie1 ie3)
         "interr_overlap did not identifiy overlapping segments" ;
     test (not (interr_overlap ie2 ie4))
-        "interr_overlap misidentified unoverlapping segments" ;;
+        "interr_overlap misidentified unoverlapping segments" ;
+    test (interr_overlap ie2 (interr_of 3. 12. 0.012)) 
+        "interr_overlap misidentified containing overlap" ;;
  
 let ie_op_tests =
     test_eq (ie_add ie1 ie2) (interr_of 6. 12. (err_add ie1 ie2)) 
@@ -231,17 +232,6 @@ let ulp_op_test =
     test_eq (ulp_div ie1 ie2) (0.5 *. ulp (4. /. 4.))
         "ulp_div failed test" ;;
 
-(*
-let () =
-    printf "%20.20f = %20.20f\n" 
-        (err_div ie2 ie1)
-        ((((4. *. 0.101) -. (8. *. 0.03)) /. ((4. *. 4.) +. (4. *. 0.03))) +. 
-         (ulp_div ie2 ie1)) ;
-    printf "%B\n" (infinity = infinity) ;;
-    printf "%s = %s\n" (Float.to_string (ulp_mul ie1 ie2)) 
-                       (Float.to_string (0.5 *. ulp (4. *. 8.)) ;;
-*)
-                       
 (* TODO: Look into potentially negative error here? Probably need an absolute value... *)
 let err_tests =
     test_eq (err_add ie1 ie2) (ie1.err +. ie2.err +. (ulp_add ie1 ie2)) 
@@ -278,6 +268,7 @@ let extremes_test test =
 let x = Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 8. 0.01 ] ;;
 let y = Eterm [ interr_of 1. 3. 0.001 ; interr_of 3. 6. 0.011 ] ;;
 let z = Eterm [ interr_of 1. 5. 0.013 ; interr_of 5. 10. 0.017 ] ;;
+let t2 = Eterm [ interr_of 1. 2. 0.001 ; interr_of 2. 4. 0.02 ] ;;
 
 let range_tests = 
     test_eq (range x) (intr_of 2. 8.) "range failed happy path test" ;
@@ -402,6 +393,44 @@ let eterm_eq_test =
                "eterm_eq failed contains test" ;;
     
 let eterm_neq_test = test_ets_b (eterm_neq x y) (x, y) "eterm_neq failed test" ;;
+
+let partition_overlap_test = 
+    test_tup_lst (partition_overlap x (interr_of 5. 9. 0.12))
+                 ([interr_of 4. 8. 0.01], [interr_of 2. 4. 0.02])
+                 "partition_overlap failed overlap higher segment test" ;
+    test_tup_lst (partition_overlap x (interr_of 2. 3. 0.12))
+                 ([interr_of 2. 4. 0.02], [interr_of 4. 8. 0.01])
+                 "partition_overlap failed overlap lower segment test" ;
+    test_tup_lst (partition_overlap x (interr_of 9. 12. 0.12))
+                 ([], get_segs x)
+                 "partition_overlap failed no-overlap test" ;
+    test_tup_lst (partition_overlap x (interr_of 3. 12. 0.12))
+                 (get_segs x, [])
+                 "partition_overlap failed multiple overlap test" ;
+    test_tup_lst (partition_overlap t2 (interr_of 3. 6. 0.11))
+                 ([interr_of 2. 4. 0.02], [interr_of 1. 2. 0.001])
+                 "partition_overlap failed ... test" ;;
+
+
+let eterm_interr_union_test = 
+    test_ets (eterm_interr_union x (interr_of 4. 7. 0.001)) x
+        "eterm_interr_union failed no-change test" ;
+    test_ets (eterm_interr_union x (interr_of 4. 7. 0.03))
+             (Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 7. 0.03 ; interr_of 7. 8. 0.01 ])
+        "eterm_interr_union failed upper-contains test" ;
+    test_ets (eterm_interr_union x (interr_of 3. 6. 0.015))
+             (Eterm [ interr_of 2. 4. 0.02 ; interr_of 4. 6. 0.015 ; interr_of 6. 8. 0.01 ])
+        "eterm_interr_union failed middle union test" ;
+    test_ets (eterm_interr_union t2 (interr_of 3. 6. 0.011))
+             (Eterm [ interr_of 1. 2. 0.001 ; interr_of 2. 4. 0.02 ; interr_of 4. 6. 0.011])
+        "eterm_interr_union failed ... test" ;;
+
+
+let eterm_union_test =
+    test_ets (eterm_union x y)
+             (Eterm [ interr_of 1. 2. 0.001 ; interr_of 2. 4. 0.02 ;
+                      interr_of 4. 6. 0.011 ; interr_of 6. 8. 0.01 ])
+        "eterm_union failed test" ;;
 
 (* Interpreter Testing *)
 (* ---------------------- *)

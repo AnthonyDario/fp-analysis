@@ -77,16 +77,18 @@ let eterm_neq l r = (l, r) ;;
 (* Union *)
 (* Merge an eterm with a single segment *)
 
-let overlapping_segments et ie =
+let partition_segs et f = 
     match et with
-    | Eterm ies -> filter (fun i -> interr_overlap i ie) ies
-    | Bot       -> [] ;;
+    | Eterm ies -> partition f ies
+    | Bot       -> ([], [])
+
+let partition_overlap et ie = partition_segs et (fun i -> interr_overlap i ie) ;;
 
 let rec eterm_interr_union et ie =
     match et with
     | Eterm ies ->
-        let overlap = overlapping_segments et ie in
-        Eterm (et_ie_u_inner overlap ie)
+        let (overlap, nonoverlap) = partition_overlap et ie in
+        merge (eterm_append (Eterm nonoverlap) (et_ie_u_inner overlap ie))
     | Bot -> Bot
 (* interr list * interr -> interr list *)
 and et_ie_u_inner segments ie =

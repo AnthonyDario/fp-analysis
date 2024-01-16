@@ -18,7 +18,11 @@ let intr_of_exc l u = if l >= u then intr_bot else {l = l ; u = u} ;;
 
 (* Useful utils *)
 let contains i v = i.l <= v && i.u >= v ;;
-let intr_overlap i1 i2 = i1.l <= i2.l && i1.u >= i2.l || i1.u >= i2.u && i1.l <= i2.u ;;
+let intr_overlap i1 i2 = 
+    i1.l <= i2.l && i1.u >= i2.l ||
+    i2.l <= i1.l && i2.u >= i1.l ||
+    i1.u >= i2.u && i1.l <= i2.u ||
+    i2.u >= i1.u && i2.l <= i1.u ;;
 
 (* Arithmetic operators *)
 let intr_add l r = { l = add Down l.l r.l ; u = add Up l.u r.u } ;;
