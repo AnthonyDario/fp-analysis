@@ -2,7 +2,7 @@ open List
 
 open Tree
 open Interval
-open Interr
+open Segment
 open Eterm
 
 (* Concrete Domain *)
@@ -38,14 +38,14 @@ let rec str_cstmt stmt =
 let str_interval i =
     "[" ^ Float.to_string i.l ^ " ; " ^ Float.to_string i.u ^ "]" ;;
 
-let str_interr ie =
+let str_seg ie =
     "(" ^ str_interval ie.int ^ ", " ^ Float.to_string ie.err ^ ")" ;;
 
 let str_eterm trm = 
     match trm with
     | Eterm ies -> (fold_left (fun acc s -> acc ^ s ^ ", ") 
                               "{" 
-                              (map str_interr ies))
+                              (map str_seg ies))
                     ^ "}"
     | Bot       -> "_" ;;
 

@@ -1,7 +1,7 @@
 open List
 open Util
 open Interval
-open Interr
+open Segment
 open Eterm
 
 (* Concrete Domain *)
