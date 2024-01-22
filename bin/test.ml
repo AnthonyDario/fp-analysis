@@ -8,6 +8,7 @@ open Eterm
 open Segment
 open Interval
 open Util
+open Parse
 
 (* Testing functions *)
 let test b m = if not b then failwith m ;;
@@ -431,6 +432,22 @@ let eterm_union_test =
              (Eterm [ seg_of 1. 2. 0.001 ; seg_of 2. 4. 0.02 ;
                       seg_of 4. 6. 0.011 ; seg_of 6. 8. 0.01 ])
         "eterm_union failed test" ;;
+
+(* Parser Testing *)
+
+let parse_answer = 
+    CCol (
+        CAsgn ("x", CVal 12.1),
+        CIf (CGe (CVar "x", CVal 12.0),
+             CAsgn ("x", CAdd (CVar "x", CVal 5.7)),
+             CAsgn ("x", CMul (CVal 3.1, CVar "x"))))
+    ;;
+
+let parse_test = 
+    let f = (parse_one_file "c/test.c") in 
+    Format.printf "%s\n" (str_cstmt (transform f)) ;
+    test_eq (transform f) parse_answer "Parser failed test1"
+    ;;
 
 (* Interpreter Testing *)
 (* ---------------------- *)
