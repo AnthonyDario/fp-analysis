@@ -21,8 +21,8 @@ let str_cbexp exp =
     | CLe (l, r) -> str_caexp l ^ " <= " ^ str_caexp r
     | CEq (l, r) -> str_caexp l ^ " = "  ^ str_caexp r
     | CNe (l, r) -> str_caexp l ^ " != " ^ str_caexp r
-    | CGe (l, r) -> str_caexp l ^ " > "  ^ str_caexp r
-    | CGt (l, r) -> str_caexp l ^ " >= " ^ str_caexp r ;;
+    | CGe (l, r) -> str_caexp l ^ " >= "  ^ str_caexp r
+    | CGt (l, r) -> str_caexp l ^ " > " ^ str_caexp r ;;
 
 let rec str_cstmt stmt = 
     match stmt with
@@ -67,8 +67,8 @@ let str_abexp exp =
     | ALe (l, r) -> str_aaexp l ^ " <= " ^ str_aaexp r
     | AEq (l, r) -> str_aaexp l ^ " = "  ^ str_aaexp r
     | ANe (l, r) -> str_aaexp l ^ " != " ^ str_aaexp r
-    | AGe (l, r) -> str_aaexp l ^ " > "  ^ str_aaexp r
-    | AGt (l, r) -> str_aaexp l ^ " >= " ^ str_aaexp r ;;
+    | AGe (l, r) -> str_aaexp l ^ " >= "  ^ str_aaexp r
+    | AGt (l, r) -> str_aaexp l ^ " > " ^ str_aaexp r ;;
 
 let rec str_astmt stmt = 
     match stmt with
