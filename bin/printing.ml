@@ -26,13 +26,17 @@ let str_cbexp exp =
 
 let rec str_cstmt stmt = 
     match stmt with
-    | CAsgn (n, v)       -> n ^ " = " ^ str_caexp v
-    | CIf   (b, t, e)    -> 
-        "if " ^ str_cbexp b ^ "\nthen " ^ str_cstmt t ^ "\nelse " ^ str_cstmt e
-    | CFor  (i, c, a, b) ->
+    | CAsgn (n, v) -> 
+        n ^ " = " ^ str_caexp v
+    | CIf (b, t, e) -> 
+        "if (" ^ str_cbexp b ^ ")\nthen " ^ str_cstmt t ^ "\nelse " ^ str_cstmt e
+    | CFor (i, c, a, b) ->
         "for (" ^ str_cstmt i ^ "; " ^ str_cbexp c ^ "; " ^ str_cstmt a ^ ")\n" ^
         str_cstmt b
-    | CCol  (f, s)       -> str_cstmt f ^ ";\n" ^ str_cstmt s ;;
+    | CCol (f, s) -> str_cstmt f ^ ";\n" ^ str_cstmt s 
+    | CRet aexp ->
+        "return " ^ str_caexp aexp ^ ";"
+    ;;
 
 (* Abstract Domain *)
 let str_interval i =
@@ -72,13 +76,15 @@ let str_abexp exp =
 
 let rec str_astmt stmt = 
     match stmt with
-    | AAsgn (n, v)       -> n ^ " = " ^ str_aaexp v
-    | AIf   (b, t, e)    -> 
+    | AAsgn (n, v) -> n ^ 
+        " = " ^ str_aaexp v
+    | AIf (b, t, e) -> 
         "if " ^ str_abexp b ^ "\nthen " ^ str_astmt t ^ "\nelse " ^ str_astmt e
-    | AFor  (i, c, a, b) ->
+    | AFor (i, c, a, b) ->
         "for (" ^ str_astmt i ^ "; " ^ str_abexp c ^ "; " ^ str_astmt a ^ ")\n" ^
         str_astmt b
-    | ACol  (f, s)       -> str_astmt f ^ ";\n" ^ str_astmt s ;;
+    | ACol (f, s) -> str_astmt f ^ ";\n" ^ str_astmt s 
+    | ARet aexp -> "return " ^ str_aaexp aexp ^ ";" ;;
 
 let str_avar n amem = n ^ " -> " ^ str_eterm (amem.lookup n) 
 

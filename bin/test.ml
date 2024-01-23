@@ -435,18 +435,20 @@ let eterm_union_test =
 
 (* Parser Testing *)
 
-let parse_answer = 
+let test1 = 
     CCol (
-        CAsgn ("x", CVal 12.1),
-        CIf (CGe (CVar "x", CVal 12.0),
-             CAsgn ("x", CAdd (CVar "x", CVal 5.7)),
-             CAsgn ("x", CMul (CVal 3.1, CVar "x"))))
+        CCol (
+            CAsgn ("x", CVal 12.1),
+            CIf (CGe (CVar "x", CVal 12.0),
+                 CAsgn ("x", CAdd (CVar "x", CVal 5.7)),
+                 CAsgn ("x", CMul (CVal 3.1, CVar "x")))),
+        CRet (CVar "x"))
     ;;
 
 let parse_test = 
-    let f = (parse_one_file "c/test.c") in 
-    Format.printf "%s\n" (str_cstmt (transform f)) ;
-    test_eq (transform f) parse_answer "Parser failed test1"
+    let t1 = (parse_one_file "c/test.c") in 
+    Format.printf "%s\n\n" (str_cstmt (transform f)) ;
+    test_eq (transform t1) test1 "Parser failed test1"
     ;;
 
 (* Interpreter Testing *)

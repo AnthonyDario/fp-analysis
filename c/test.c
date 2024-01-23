@@ -6,4 +6,5 @@ int main()
     } else {
         x = 3.1 * x;
     }
+    return x;
 }

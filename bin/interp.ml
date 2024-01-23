@@ -33,11 +33,17 @@ let abst_bexp exp =
     
 let rec abst_stmt exp = 
     match exp with
-    | CAsgn (n, v)       -> AAsgn (n, (abst_aexp v))
-    | CIf   (b, t, e)    -> AIf ((abst_bexp b), (abst_stmt t), (abst_stmt e))
-    | CFor  (i, c, b, a) -> 
+    | CAsgn (n, v) -> 
+        AAsgn (n, (abst_aexp v))
+    | CIf (b, t, e) -> 
+        AIf ((abst_bexp b), (abst_stmt t), (abst_stmt e))
+    | CFor (i, c, b, a) -> 
         AFor ((abst_stmt i), (abst_bexp c), (abst_stmt b), (abst_stmt a))
-    | CCol  (f, s)       -> ACol ((abst_stmt f), (abst_stmt s)) ;;
+    | CCol (f, s) -> 
+        ACol ((abst_stmt f), (abst_stmt s)) 
+    | CRet aexp ->
+        ARet (abst_aexp aexp) 
+    ;;
 
 (* Abstract semantics *)
 
@@ -174,6 +180,7 @@ let rec asem_stmt exp is m =
         let body = comp (asem_stmt a is) 
                         (comp (asem_stmt b is) (asem_bexp c)) in
         asem_bexp (not_abexp c) (abst_iter body (asem_stmt f is m) is)
-    | ACol (s1, s2) -> asem_stmt s2 is (asem_stmt s1 is m) ;;
+    | ACol (s1, s2) -> asem_stmt s2 is (asem_stmt s1 is m) 
+    | ARet x -> m ;;
 
 let abst_interp exp m = asem_stmt exp 20 m ;;

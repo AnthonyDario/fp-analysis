@@ -25,7 +25,8 @@ type cstmt =
     | CAsgn of string * caexp
     | CIf   of cbexp * cstmt * cstmt
     | CFor  of cstmt * cbexp * cstmt * cstmt
-    | CCol  of cstmt * cstmt ;;
+    | CCol  of cstmt * cstmt 
+    | CRet  of caexp ;;
 
 (* Abstract Domain *)
 
@@ -88,4 +89,5 @@ type astmt =
     | AAsgn of string * aaexp
     | AIf   of abexp * astmt * astmt
     | AFor  of astmt * abexp * astmt * astmt
-    | ACol  of astmt * astmt ;;
+    | ACol  of astmt * astmt 
+    | ARet  of aaexp ;;
