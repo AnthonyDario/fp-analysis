@@ -6,18 +6,18 @@ open Util
 
 (* The interval-error terms.  Represents a section of the interval with an
    associated error *)
-type interr = {
+type segment = {
     int : interval;
     err : float
 } ;;
 
-let interr_bot = { int = intr_bot ; err = 0. } ;;
-let interr_of l u err = 
+let seg_bot = { int = intr_bot ; err = 0. } ;;
+let seg_of l u err = 
     if l > u || err < 0.
-    then interr_bot 
+    then seg_bot 
     else { int = intr_of l u ; err = err } ;;
 
-let interr_overlap ie1 ie2 = intr_overlap ie1.int ie2.int ;;
+let seg_overlap ie1 ie2 = intr_overlap ie1.int ie2.int ;;
 
 (* Dealing with error *)
 let ulp_add l r = 0.5 *. ulp ((abs l.int.u) +. (abs r.int.u)) ;;
@@ -62,30 +62,30 @@ let ie_div x y =
 (* Return the new values of the operands *)
 let ie_lt l r = 
     let (li, ri) = intr_lt l.int r.int in
-    (interr_of li.l li.u l.err, interr_of ri.l ri.u r.err) ;;
+    (seg_of li.l li.u l.err, seg_of ri.l ri.u r.err) ;;
 
 let ie_le l r = 
     let (li, ri) = intr_le l.int r.int in
-    (interr_of li.l li.u l.err, interr_of ri.l ri.u r.err) ;;
+    (seg_of li.l li.u l.err, seg_of ri.l ri.u r.err) ;;
 
 let ie_gt l r = 
     let (li, ri) = intr_gt l.int r.int in
-    (interr_of li.l li.u l.err, interr_of ri.l ri.u r.err) ;;
+    (seg_of li.l li.u l.err, seg_of ri.l ri.u r.err) ;;
 
 let ie_ge l r = 
     let (li, ri) = intr_ge l.int r.int in
-    (interr_of li.l li.u l.err, interr_of ri.l ri.u r.err) ;;
+    (seg_of li.l li.u l.err, seg_of ri.l ri.u r.err) ;;
 
 let ie_eq l r =
     let (li, ri) = intr_eq l.int r.int in
-    (interr_of li.l li.u l.err, interr_of ri.l ri.u r.err) ;;
+    (seg_of li.l li.u l.err, seg_of ri.l ri.u r.err) ;;
 
 let ie_neq l r = (l, r) ;;
 
 (* Same as intr without but maintain the error *)
-(* Remove ie2 from ie1, produces a list of interrors *)
+(* Remove ie2 from ie1, produces a list of segments *)
 let ie_without ie1 ie2 =
-    map (fun i -> interr_of i.l i.u ie1.err) 
+    map (fun i -> seg_of i.l i.u ie1.err) 
         (intr_without ie1.int ie2.int) ;;
 
 (* Union *)
@@ -93,7 +93,7 @@ let ie_without ie1 ie2 =
  * dependency cycle is introduced.  The resulting list has a domain the same
  * size as the union of the two intervals.
  *)
-(* ie_union : interr -> interr -> interr list *)
+(* ie_union : segment -> segment -> segment list *)
 let ie_union l r = 
     let (large, small) = if l.err >= r.err then (l, r) else (r, l) in
     let intrs = ie_without small large in

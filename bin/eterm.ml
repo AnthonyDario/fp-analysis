@@ -1,12 +1,12 @@
 open List
 open Util
 open Interval
-open Interr
+open Segment
 
 (* Models a step function, the interval is the domain and the err is the value
    in that interval *)
-type eterm = Bot | Eterm of interr list ;;
-let eterm_of l u e = Eterm [interr_of l u e] ;;
+type eterm = Bot | Eterm of segment list ;;
+let eterm_of l u e = Eterm [seg_of l u e] ;;
 
 (* Utilities *)
 (* ------------------------- *)
@@ -21,7 +21,7 @@ let range et =
 (* Utility to get the range as a segment datatype *)
 let range_ie et = 
     let intr = range et in
-    interr_of intr.l intr.u 0.0 ;;
+    seg_of intr.l intr.u 0.0 ;;
 
 let get_segs et = 
     match et with
@@ -35,6 +35,9 @@ let eterm_append et ies =
         (match ies with
          | [] -> Bot
          | _  -> Eterm ies) ;;
+
+(* Convert to an integer interval for casting purposes *)
+let eterm_to_iintr et = intr_to_iintr (range et) ;;
 
 (* Arithmetic operators *)
 (* ------------------------- *)
@@ -58,12 +61,12 @@ let emul le re = eop le re ie_mul ;;
 let ediv le re = eop le re ie_div ;;
 
 (* Boolean operators *)
-(* Chops based upen interr comparison function passed in *)
+(* Chops based upen segment comparison function passed in *)
 let chop eterm range comp =
     match eterm with
     | Eterm ies ->
-          let dummy = interr_of range.l range.u 0.0 in
-          Eterm (filter (fun x -> x != interr_bot) 
+          let dummy = seg_of range.l range.u 0.0 in
+          Eterm (filter (fun x -> x != seg_bot) 
                         (map (fun x -> fst (comp x dummy)) ies))
     | Bot -> Bot ;;
 
@@ -82,15 +85,15 @@ let partition_segs et f =
     | Eterm ies -> partition f ies
     | Bot       -> ([], [])
 
-let partition_overlap et ie = partition_segs et (fun i -> interr_overlap i ie) ;;
+let partition_overlap et ie = partition_segs et (fun i -> seg_overlap i ie) ;;
 
-let rec eterm_interr_union et ie =
+let rec eterm_seg_union et ie =
     match et with
     | Eterm ies ->
         let (overlap, nonoverlap) = partition_overlap et ie in
         merge (eterm_append (Eterm nonoverlap) (et_ie_u_inner overlap ie))
     | Bot -> Bot
-(* interr list * interr -> interr list *)
+(* segment list * segment -> segment list *)
 and et_ie_u_inner segments ie =
     match segments with
     | seg :: segs -> 
@@ -105,6 +108,6 @@ let eterm_union l r =
     | Eterm le, Eterm re -> 
         let ies = sort (fun ie1 ie2 -> Float.compare ie1.int.l ie2.int.l) (le @ re) in
         (match ies with
-         | hd :: tl -> fold_left (fun acc ie -> eterm_interr_union acc ie) (Eterm [hd]) tl
+         | hd :: tl -> fold_left (fun acc ie -> eterm_seg_union acc ie) (Eterm [hd]) tl
          | [] -> Bot)
     | _, _ -> Bot ;;

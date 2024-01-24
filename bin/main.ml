@@ -1,4 +1,4 @@
-(* Just runs the tests now *)
+(* Just runs the tests for now *)
 
 (* Testing *)
 (* ---------------------- *)
