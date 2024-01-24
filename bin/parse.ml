@@ -12,7 +12,7 @@ module C = Cil
 
 exception ParseError of string ;;
 
-let parse_one_file fname = 
+let parse_file fname = 
     let cabs, cil = F.parse_with_cabs fname () in
     Rmtmps.removeUnusedTemps cil ;
     cil ;;
@@ -23,18 +23,14 @@ let transform_const c =
         CVal (CFloat f)
     | CInt (i,_,_) ->
         CVal (CInt (Cilint.int_of_cilint i))
-    | _ -> 
-        raise (ParseError "Only numbers supported\n") ;
-        (*
     | CStr (_,_) ->
-        E.log "CStr\n"
+        raise (ParseError "CStr\n")
     | CWStr (_,_) ->
-        E.log "CWStr\n"
+        raise (ParseError "CWStr\n")
     | CChr _ ->
-        E.log "CChr\n"
+        raise (ParseError "CChr\n")
     | CEnum (_,_,_) ->
-        E.log "CEnum"
-    *)
+        raise (ParseError "CEnum")
     ;;
 
 let rec transform_arith_binop op l r =
@@ -83,42 +79,30 @@ and transform_aexp e =
         | TInt _ | TFloat _ ->  (* TODO: note the loss of precision for float -> int casts *)
             transform_aexp e
         | _ -> raise (ParseError "Unsupported Cast\n") );
-    | _ -> raise (ParseError "Unknown aexp\n")
-    (*
     | Real _ ->
-        E.log "Real\n" ;
-        raise ParseError
+        raise (ParseError "Real unsupported\n") 
     | AddrOf (_) ->
-        E.log "AddrOf\n" ;
-        raise ParseError
+        raise (ParseError "AddrOf unsupported\n")
     | SizeOf _ ->
-        E.log "SizeOf\n" ;
-        raise ParseError
+        raise (ParseError "SizeOf unsupported\n")
     | Imag _ ->
-        E.log "Imag\n" ;
-        raise ParseError
+        raise (ParseError "Imag unsupported\n")
     | SizeOfE _ ->
-        E.log "SizeOfE\n" ;
-        raise ParseError
+        raise (ParseError "SizeOfE unsupported\n")
     | SizeOfStr _ ->
-        E.log "SizeOfStr\n" ;
-        raise ParseError
+        raise (ParseError "SizeOfStr unsupported\n")
     | AlignOf _ ->
-        E.log "AlignOf" ;
-        raise ParseError
+        raise (ParseError "AlignOf unsupported\n")
     | UnOp (_,_,_) ->
-        E.log "UnOp" ;
-        raise ParseError
+        raise (ParseError "UnOp unsupported\n")
     | Question (_,_,_,_) ->
-        E.log "Question" ;
-        raise ParseError
+        raise (ParseError "Question unsupported\n")
     | AddrOfLabel _ ->
-        E.log "AddrOfLabel\n" ;
-        raise ParseError
+        raise (ParseError "AddrOfLabel unsupported\n")
     | StartOf _ ->
-        E.log "StartOf\n" ;
-        raise ParseError
-    *)
+        raise (ParseError "StartOf unsupported\n")
+    | AlignOfE _ ->
+        raise (ParseError "AlignOfE unsupported\n")
 
 (* Gets the name of the variable *)
 and transform_lval ((lhost, _) : lval) : (string * ctyp) =
@@ -174,35 +158,25 @@ let transform_instr i =
     match i with
     | Set (lv, e, _, _) ->
         CAsgn (fst (transform_lval lv), (transform_aexp e))
-    | _ -> raise (ParseError "Only assignment instructions supported\n")
-    ;;
-    (*
     | VarDecl (_,_) ->
-        E.log ("VarDecl\n")
+        raise (ParseError "Variable declarations are not supported") ;
     | Call (_,_,_,_,_) ->
-        E.log ("Function calls are not supported\n") ;
-        raise ParseError
+        raise (ParseError "Function calls are not supported\n") ;
     | Asm (_,_,_,_,_,_) ->
-        E.log ("Assembly is not supported\n") ;
-        raise ParseError
-    *)
+        raise (ParseError "Assembly is not supported\n") ;
+    ;;
 
 let rec transform_stmt s =
     match s.skind with
     | Instr is ->
-        E.log "instr\n" ;
         transform_instrs is
     | If (c, b1, b2,_,_) -> 
-        E.log "if\n" ;
         CIf (transform_bexp c, transform_block b1, transform_block b2)
     | Return (e, _) -> (
         match e with
         | Some exp -> CRet (transform_aexp exp)
         | _ -> raise (ParseError "Empty return not supported"))
     | Loop (body, _,_, _, _) ->
-        E.log "loop\n" ;
-        Format.printf "length of pred = %d\n" (length s.preds) ;
-        Format.printf "length of succs = %d\n" (length s.succs) ;
         transform_loop body (hd s.preds)
     | Goto (_,_) ->
         raise (ParseError "Goto unsupported\n")
