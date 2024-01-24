@@ -464,12 +464,27 @@ let test2 =
         CRet (CVar ("x", FloatTyp)))
     ;;
 
+(* This is functionally the same as test2.  Really just a presentation problem
+   that seems to be intrinsic to CIL*)
+let test3 = 
+    CCol (
+        CCol (
+            CCol (CAsgn ("x", CVal (CFloat 2.4)),
+                  CAsgn ("i", CVal (CInt 0))),
+            CFor (CAsgn ("i", CVal (CInt 0)), 
+                  CLt (CVar ("i", IntTyp), CVal (CInt 10)), 
+                  CAsgn ("i", CAdd ((CVar ("i", IntTyp) , CVal (CInt 1)))),
+                  CAsgn ("x", CAdd ((CVar ("x", FloatTyp), CVal (CFloat 2.1)))))),
+        CRet (CVar ("x", FloatTyp)))
+    ;;
+
 let parse_test = 
-    (* let t1 = (parse_one_file "c/test.c") in *)
-    let t2 = (parse_one_file "c/test2.c") in 
-    Format.printf "%s\n\n" (str_cstmt (transform t2)) ;
-    (* test_eq (transform t1) test1 "Parser failed test1" ; *)
+    let t1 = (parse_file "c/test.c") in 
+    let t2 = (parse_file "c/test2.c") in 
+    (* let t3 = (parse_file "c/test3.c") in  *)
+    test_eq (transform t1) test1 "Parser failed test1" ;
     test_eq (transform t2) test2 "Parser failed test2"
+    (* test_eq (transform t3) test3 "Parser failed test3" *)
     ;;
 
 (* Interpreter Testing *)
