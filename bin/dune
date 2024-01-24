@@ -1,5 +1,5 @@
 (executable
  (public_name analyzer)
  (name main)
- (libraries analyzer round goblint-cil))
+ (libraries round goblint-cil))
 
