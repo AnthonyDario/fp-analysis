@@ -6,10 +6,15 @@ open Segment
 open Eterm
 
 (* Concrete Domain *)
+let rec str_cval v =
+    match v with
+    | CInt i -> Int.to_string i
+    | CFloat f -> Float.to_string f ;;
+
 let rec str_caexp exp = 
     match exp with
-    | CVal v      -> Float.to_string v
-    | CVar n      -> n
+    | CVal v      -> str_cval v
+    | CVar (n, _) -> n
     | CAdd (l, r) -> str_caexp l ^ " + " ^ str_caexp r
     | CSub (l, r) -> str_caexp l ^ " - " ^ str_caexp r
     | CMul (l, r) -> str_caexp l ^ " * " ^ str_caexp r
@@ -40,7 +45,12 @@ let rec str_cstmt stmt =
 
 (* Abstract Domain *)
 let str_interval i =
-    "[" ^ Float.to_string i.l ^ " ; " ^ Float.to_string i.u ^ "]" ;;
+    "[" ^ Float.to_string i.l ^ 
+    " ; " ^ Float.to_string i.u ^ "]" ;;
+
+let str_iInterval i =
+    "[" ^ Int.to_string i.low ^ 
+    " ; " ^ Int.to_string i.up ^ "]" ;;
 
 let str_seg ie =
     "(" ^ str_interval ie.int ^ ", " ^ Float.to_string ie.err ^ ")" ;;
@@ -53,13 +63,16 @@ let str_eterm trm =
                     ^ "}"
     | Bot       -> "_" ;;
 
+let rec str_aval v =
+    match v with
+    | AInt i -> str_iInterval i
+    | AFloat Bot -> "_|_"
+    | AFloat trm -> str_eterm trm ;;
+
 let rec str_aaexp exp = 
     match exp with
-    | AVal Bot    -> "@"
-    | AVal e      -> str_eterm e
-        (* "([" ^ Float.to_string e.int.l ^ " ; " ^ Float.to_string e.int.u ^ 
-        "], " ^ Float.to_string e.err ^ ")" *)
-    | AVar n      -> n
+    | AVal v      -> str_aval v
+    | AVar (n, _) -> n
     | AAdd (l, r) -> str_aaexp l ^ " + " ^ str_aaexp r
     | ASub (l, r) -> str_aaexp l ^ " - " ^ str_aaexp r
     | AMul (l, r) -> str_aaexp l ^ " * " ^ str_aaexp r
@@ -86,7 +99,11 @@ let rec str_astmt stmt =
     | ACol (f, s) -> str_astmt f ^ ";\n" ^ str_astmt s 
     | ARet aexp -> "return " ^ str_aaexp aexp ^ ";" ;;
 
-let str_avar n amem = n ^ " -> " ^ str_eterm (amem.lookup n) 
+let str_avar n amem = 
+    match amem.lookup n with
+    | Some (AInt ii) -> n ^ " -> " ^ str_iInterval ii
+    | Some (AFloat et) -> n ^ " -> " ^ str_eterm et
+    | None -> n ^ " -> _" ;;
 
 let str_amem amem =
     fold_left (fun acc x -> acc ^ "\n" ^ (str_avar x amem))

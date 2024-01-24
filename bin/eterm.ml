@@ -36,6 +36,9 @@ let eterm_append et ies =
          | [] -> Bot
          | _  -> Eterm ies) ;;
 
+(* Convert to an integer interval for casting purposes *)
+let eterm_to_iintr et = intr_to_iintr (range et) ;;
+
 (* Arithmetic operators *)
 (* ------------------------- *)
 let merge et = 

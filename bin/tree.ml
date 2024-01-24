@@ -5,9 +5,15 @@ open Segment
 open Eterm
 
 (* Concrete Domain *)
+type ctyp = IntTyp | FloatTyp ;;
+
+type cval =
+    | CInt   of int
+    | CFloat of float
+
 type caexp =
-    | CVal of float
-    | CVar of string
+    | CVal of cval
+    | CVar of string * ctyp
     | CAdd of caexp * caexp
     | CSub of caexp * caexp
     | CMul of caexp * caexp
@@ -30,39 +36,16 @@ type cstmt =
 
 (* Abstract Domain *)
 
-type id = Id of string | Const ;;
-
-(* Abstract Memory *)
-module SS = Set.Make(String) ;;
-
-(* Memory modeled as a function.  The domain is tracked. *)
-type amem = {
-    dom : SS.t ;
-    lookup : string -> eterm
-}
-
-let amem_bot = { dom = SS.empty ; lookup = fun _ -> Bot } ;;
-
-(* amem_update : id -> float -> amem -> amem *)
-let amem_update n v m = 
-    let { dom = mdom ; lookup = look } = m in
-    match n with 
-    | Id id -> 
-        { dom = SS.add id mdom ; 
-          lookup = fun x -> if id == x then v else look x }
-    | Const -> m ;;
-
-(* amem_contains : amem -> string -> bool *)
-let amem_contains m n = 
-    let { dom = _ ; lookup = look } = m in
-    match look n with
-    | Bot -> false
-    | _   -> true ;;
-
 (* Abstract AST *)
+type atyp = IntrTyp | AStepTyp
+
+type aval = 
+    | AInt   of iInterval
+    | AFloat of eterm ;;
+
 type aaexp =
-    | AVal of eterm
-    | AVar of string
+    | AVal of aval
+    | AVar of string * atyp
     | AAdd of aaexp * aaexp
     | ASub of aaexp * aaexp
     | AMul of aaexp * aaexp
@@ -91,3 +74,40 @@ type astmt =
     | AFor  of astmt * abexp * astmt * astmt
     | ACol  of astmt * astmt 
     | ARet  of aaexp ;;
+
+type id = Id of string | Const ;;
+
+(* Abstract Memory *)
+module SS = Set.Make(String) ;;
+
+exception UndefinedVariableException of string ;;
+
+(* Memory modeled as a function.  The domain is tracked. *)
+type amem = {
+    dom : SS.t ;
+    lookup : string -> aval option
+}
+
+let fail_lookup (x : string) (m : string -> aval option) = 
+    match m x with
+    | Some v -> v
+    | None -> raise (UndefinedVariableException (x ^ " Is not assigned")) ;;
+
+let amem_bot = { dom = SS.empty ; lookup = fun _ -> None } ;;
+
+(* amem_update : id -> float -> amem -> amem *)
+let amem_update n v m = 
+    let { dom = mdom ; lookup = look } = m in
+    match n with 
+    | Id id -> 
+        { dom = SS.add id mdom ; 
+          lookup = fun x -> if id == x then Some v else look x }
+    | Const -> m ;;
+
+(* amem_contains : amem -> string -> bool *)
+let amem_contains m n = 
+    let { dom = _ ; lookup = look } = m in
+    match look n with
+    | None -> false
+    | _   -> true ;;
+

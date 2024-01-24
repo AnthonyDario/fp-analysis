@@ -264,6 +264,14 @@ let extremes_test test =
     test_eq 1.4 (min_flt lst) "min_flt failed test" ;
     test_eq 6. (max_flt lst) "max_flt failed test" ;;
 
+let last_test =
+    test_eq 1 (last [2 ; 1]) "last failed test" ;;
+
+let remove_last_test = 
+    test_eq [1 ; 2 ; 3 ; 4] 
+            (remove_last [1; 2; 3; 4; 5]) 
+            "remove_last failed test" ;;
+
 (* Eterm Testing *)
 (* ---------------------- *)
 let x = Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ] ;;
@@ -438,17 +446,30 @@ let eterm_union_test =
 let test1 = 
     CCol (
         CCol (
-            CAsgn ("x", CVal 12.1),
-            CIf (CGe (CVar "x", CVal 12.0),
-                 CAsgn ("x", CAdd (CVar "x", CVal 5.7)),
-                 CAsgn ("x", CMul (CVal 3.1, CVar "x")))),
-        CRet (CVar "x"))
+            CAsgn ("x", CVal (CFloat 12.1)),
+            CIf (CGe (CVar ("x", FloatTyp), CVal (CInt 12)),
+                 CAsgn ("x", CAdd (CVar ("x", FloatTyp), CVal (CFloat 5.7))),
+                 CAsgn ("x", CMul (CVal (CFloat 3.1), CVar ("x", FloatTyp))))),
+        CRet (CVar ("x", FloatTyp)))
+    ;;
+
+let test2 = 
+    CCol (
+        CCol (
+            CAsgn ("x", CVal (CFloat 2.4)),
+            CFor (CAsgn ("i", CVal (CInt 0)), 
+                  CLt (CVar ("i", IntTyp), CVal (CInt 10)), 
+                  CAsgn ("i", CAdd ((CVar ("i", IntTyp) , CVal (CInt 1)))),
+                  CAsgn ("x", CAdd ((CVar ("x", FloatTyp), CVal (CFloat 2.1)))))),
+        CRet (CVar ("x", FloatTyp)))
     ;;
 
 let parse_test = 
-    let t1 = (parse_one_file "c/test.c") in 
-    Format.printf "%s\n\n" (str_cstmt (transform f)) ;
-    test_eq (transform t1) test1 "Parser failed test1"
+    (* let t1 = (parse_one_file "c/test.c") in *)
+    let t2 = (parse_one_file "c/test2.c") in 
+    Format.printf "%s\n\n" (str_cstmt (transform t2)) ;
+    (* test_eq (transform t1) test1 "Parser failed test1" ; *)
+    test_eq (transform t2) test2 "Parser failed test2"
     ;;
 
 (* Interpreter Testing *)
@@ -461,26 +482,26 @@ let runtest exp amem =
     printf "\n%s\n" (str_amem (abst_interp aexp amem)) ;
     printf "------------------\n" ;;
 
-let test = CCol (CAsgn ("x", CVal 7.2),
-                 CIf (CLt (CVar "x", CVal 12.2),
-                      CAsgn ("x", CAdd (CVar "x", CVal 5.7)),
-                      CAsgn ("x", CMul (CVal 3.1, CVar "x")))) ;;
+let test = CCol (CAsgn ("x", CVal (CFloat 7.2)),
+                 CIf (CLt (CVar ("x", FloatTyp), CVal (CFloat 12.2)),
+                      CAsgn ("x", CAdd (CVar ("x", FloatTyp), CVal (CFloat 5.7))),
+                      CAsgn ("x", CMul (CVal (CFloat 3.1), CVar ("x", FloatTyp))))) ;;
 
 (* Testing with parameters *)
 let amem_init = 
     amem_update (Id "x") 
-                (Eterm [{int = {l = 10. ; u = 14. } ; err = 0. }]) 
+                (AFloat (Eterm [{int = {l = 10. ; u = 14. } ; err = 0. }]))
                 amem_bot ;;
 
-let test2 = CIf (CGt (CVar "x", CVal 12.2),
-                 CAsgn ("x", CAdd (CVar "x", CVal 5.7)),
-                 CAsgn ("x", CMul (CVal 3.1, CVar "x"))) ;;
+let test2 = CIf (CGt (CVar ("x", FloatTyp), CVal (CFloat 12.2)),
+                 CAsgn ("x", CAdd (CVar ("x", FloatTyp), CVal (CFloat 5.7))),
+                 CAsgn ("x", CMul (CVal (CFloat 3.1), CVar ("x", FloatTyp)))) ;;
 
 (* Testing widening *)
-let test3 = CFor (CAsgn ("i", CVal 9.),
-                  CLt (CVar "i", CVal 10.),
-                  CAsgn ("i", CAdd (CVar "i", CVal 1.)),
-                  CAsgn ("x", CAdd (CVar "x", CVal 1.))) ;;
+let test3 = CFor (CAsgn ("i", CVal (CInt 9)),
+                  CLt (CVar ("i", IntTyp), CVal (CInt 10)),
+                  CAsgn ("i", CAdd (CVar ("i", IntTyp), CVal (CInt 1))),
+                  CAsgn ("x", CAdd (CVar ("x", FloatTyp), CVal (CInt 1)))) ;;
 
 let runtests =
     runtest test amem_bot ;
