@@ -259,7 +259,7 @@ let out = [ 3 ; 5 ; 9 ; 3 ; 5; 9 ; 4 ; 6 ; 10 ];;
 let product_map_test =
     test_lst out (product_map (+) xs ys) "product_map failed test" ;;
 
-let extremes_test test = 
+let extremes_test = 
     let lst = [ 5. ; 6. ; 1.4; 2.2 ] in
     test_eq 1.4 (min_flt lst) "min_flt failed test" ;
     test_eq 6. (max_flt lst) "max_flt failed test" ;;
@@ -464,8 +464,10 @@ let test2 =
         CRet (CVar ("x", FloatTyp)))
     ;;
 
-(* This is functionally the same as test2.  Really just a presentation problem
-   that seems to be intrinsic to CIL*)
+(* This is functionally the same as test2.  The difference is if the
+   initialization statement of the forloop is inside the loop or just before it.
+   Really just a presentation problem that seems to be intrinsic to CIL. *)
+(*
 let test3 = 
     CCol (
         CCol (
@@ -477,6 +479,7 @@ let test3 =
                   CAsgn ("x", CAdd ((CVar ("x", FloatTyp), CVal (CFloat 2.1)))))),
         CRet (CVar ("x", FloatTyp)))
     ;;
+*)
 
 let parse_test = 
     let t1 = (parse_file "c/test.c") in 

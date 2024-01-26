@@ -1,8 +1,6 @@
 open List
-open Float
 
 open Util
-open Round
 open Tree
 open Interval
 open Segment
@@ -15,12 +13,12 @@ exception UnassignedVariableException of string ;;
 
 let abst_flt f = { int = { u = f ; l = f }; err = ulp f } ;;
 
-let rec abst_typ typ =
+let abst_typ typ =
     match typ with
     | IntTyp -> IntrTyp
     | FloatTyp -> AStepTyp ;;
 
-let rec abst_val v =
+let abst_val v =
     match v with
     | CInt i -> AInt { low = i ; up = i }
     | CFloat f -> AFloat (Eterm [abst_flt f]) ;;
@@ -95,11 +93,9 @@ let rec asem_aexp exp m =
 
 (* "less than" : (eterm * Id) * (eterm * Id) -> (eterm * Id) * (eterm * Id) *)
 let abst_op left right op =
-    let (ltrm, lid) = left in
-    let (rtrm, rid) = right in
-    match ltrm, rtrm with
-    | Eterm l, Eterm r -> 
-        let (new_l, new_r) = op ltrm rtrm in
+    match left, right with
+    | Eterm _, Eterm _ -> 
+        let (new_l, new_r) = op left right in
         (new_l, new_r)
     | _, _ -> (Bot, Bot) ;;
     
@@ -115,7 +111,7 @@ let abst_bool_op l r iintr_op eterm_op =
     | AInt ii, AFloat et -> wrap (iintr_op ii (eterm_to_iintr et)) intc
     | AFloat et, AInt ii -> wrap (iintr_op (eterm_to_iintr et) ii) intc
     | AFloat et1, AFloat et2 ->
-        wrap (abst_op (et1, lid) (et2, rid) eterm_op) fltc ;;
+        wrap (abst_op et1 et2 eterm_op) fltc ;;
 
 let abst_lt left right = abst_bool_op left right iintr_lt eterm_lt ;;
 let abst_le left right = abst_bool_op left right iintr_le eterm_le ;;
@@ -234,6 +230,6 @@ let rec asem_stmt exp is m =
                         (comp (asem_stmt b is) (asem_bexp c)) in
         asem_bexp (not_abexp c) (abst_iter body (asem_stmt f is m) is)
     | ACol (s1, s2) -> asem_stmt s2 is (asem_stmt s1 is m) 
-    | ARet x -> m ;;
+    | ARet _ -> m ;;
 
 let abst_interp exp m = asem_stmt exp 20 m ;;

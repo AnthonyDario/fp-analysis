@@ -24,5 +24,5 @@ let last lst = nth lst ((length lst) - 1) ;;
 let rec remove_last lst = 
     match lst with
     | [] -> []
-    | x :: [] -> []
+    | _ :: [] -> []
     | x :: xs -> x :: (remove_last xs) ;;

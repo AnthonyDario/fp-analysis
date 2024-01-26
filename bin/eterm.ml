@@ -89,7 +89,7 @@ let partition_overlap et ie = partition_segs et (fun i -> seg_overlap i ie) ;;
 
 let rec eterm_seg_union et ie =
     match et with
-    | Eterm ies ->
+    | Eterm _ ->
         let (overlap, nonoverlap) = partition_overlap et ie in
         merge (eterm_append (Eterm nonoverlap) (et_ie_u_inner overlap ie))
     | Bot -> Bot

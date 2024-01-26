@@ -4,7 +4,6 @@ module U = Util
 open List
 open GoblintCil
 open Tree
-open Printing
 
 module E = Errormsg
 module F = Frontc
@@ -13,7 +12,7 @@ module C = Cil
 exception ParseError of string ;;
 
 let parse_file fname = 
-    let cabs, cil = F.parse_with_cabs fname () in
+    let _, cil = F.parse_with_cabs fname () in
     Rmtmps.removeUnusedTemps cil ;
     cil ;;
 
@@ -182,9 +181,8 @@ let rec transform_stmt s =
         raise (ParseError "Goto unsupported\n")
     | ComputedGoto (_,_) ->
         raise (ParseError "ComputedGoto unsupported\n")
-    | Break loc -> 
-        CAsgn ("break", CVal (CInt 0))
-        (* raise (ParseError "Break unsupported\n") ; *)
+    | Break _ -> 
+        raise (ParseError "Break unsupported\n")
     | Continue _ ->
         raise (ParseError "Continue unsupported\n")
     | Switch (_,_,_,_,_) ->
@@ -263,7 +261,7 @@ and extract_condition stmt =
     ;;
 
 let transform_fun f =
-    let { sformals = formals; slocals = locals; sbody = body } = f in
+    let { sformals = _; sbody = body ; _ } = f in
     transform_block body ;;
 
 let transform_global g =

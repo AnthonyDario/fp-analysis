@@ -6,7 +6,7 @@ open Segment
 open Eterm
 
 (* Concrete Domain *)
-let rec str_cval v =
+let str_cval v =
     match v with
     | CInt i -> Int.to_string i
     | CFloat f -> Float.to_string f ;;
@@ -63,7 +63,7 @@ let str_eterm trm =
                     ^ "}"
     | Bot       -> "_" ;;
 
-let rec str_aval v =
+let str_aval v =
     match v with
     | AInt i -> str_iInterval i
     | AFloat Bot -> "_|_"
