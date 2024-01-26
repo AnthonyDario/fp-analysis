@@ -518,7 +518,7 @@ let test3 = CFor (CAsgn ("i", CVal (CInt 9)),
                   CAsgn ("i", CAdd (CVar ("i", IntTyp), CVal (CInt 1))),
                   CAsgn ("x", CAdd (CVar ("x", FloatTyp), CVal (CInt 1)))) ;;
 
-let runtests =
+let runtests () =
     runtest test amem_bot ;
     runtest test2 amem_init ; 
     runtest test3 amem_init
