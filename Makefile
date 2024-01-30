@@ -1,5 +1,5 @@
-run: clean
-	dune exec analyzer --profile release c/test.c
+run:
+	dune exec --profile release -- analyzer -f determinant c/test3.c
 
 test: clean
 	dune exec --profile release -- analyzer -test

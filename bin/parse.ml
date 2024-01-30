@@ -294,9 +294,10 @@ let transform_global g =
     *)
     ;;
 
-let transform f = 
+let transform file fun_name = 
     transform_global 
         (List.find (fun g -> 
             match g with
-            | GFun (dec,_) -> dec.svar.vname = "main"
-            | _ -> false) f.globals ) ;;
+            | GFun (dec,_) -> dec.svar.vname = fun_name
+            | _ -> false) 
+        file.globals ) ;;

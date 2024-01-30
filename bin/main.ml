@@ -1,4 +1,7 @@
-(* Just runs the tests for now *)
+open Printing
+open Interp
+open Parse
+open Tree
 
 (* Command Line Arguments *)
 let usage_msg = "analyze [-test] <file1> -f <function-name>" ;;
@@ -19,11 +22,7 @@ let () = Arg.parse speclist anon_fun usage_msg ;;
 
 (* Running the analyzer *)
 let analyze filename = 
-    Printing.str_amem (
-        Interp.abst_interp 
-            (Interp.abst_stmt 
-                (Parse.transform (Parse.parse_file filename)))
-            Tree.amem_bot) ;;
+    str_amem (abst_interp astmt amem_bot) ;;
 
 let () =
     if !testing then Test.runtests () else
