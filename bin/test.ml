@@ -131,14 +131,14 @@ let intr_without_test =
 
 (* Segment Testing *)
 (* ---------------------- *)
-let ie1 = seg_of 2. 4. 0.03;;
-let ie2 = seg_of 4. 8. 0.101;;
-let ie3 = seg_of 1. 3. 0.004;;
-let ie4 = seg_of (-5.) 3. 0.0002 ;;
-let ie5 = seg_of 1. 5. 0.00202;;
+let s1 = seg_of 2. 4. 0.03;;
+let s2 = seg_of 4. 8. 0.101;;
+let s3 = seg_of 1. 3. 0.004;;
+let s4 = seg_of (-5.) 3. 0.0002 ;;
+let s5 = seg_of 1. 5. 0.00202;;
 
 let seg_of_test = 
-    test_eq ie1 { int = { l = 2. ; u = 4. }; err = 0.03 } 
+    test_eq s1 { int = { l = 2. ; u = 4. }; err = 0.03 } 
         "seg_of failed test" ;
     test_eq (seg_of 3. 2. 0.0001) seg_bot 
         "seg_of did not produce bottom from negative interval" ;
@@ -146,108 +146,108 @@ let seg_of_test =
         "seg_of did not produce bottom from negative error" ;;
 
 let seg_overlap_test = 
-    test (seg_overlap ie1 ie3)
+    test (seg_overlap s1 s3)
         "seg_overlap did not identifiy overlapping segments" ;
-    test (not (seg_overlap ie2 ie4))
+    test (not (seg_overlap s2 s4))
         "seg_overlap misidentified unoverlapping segments" ;
-    test (seg_overlap ie2 (seg_of 3. 12. 0.012)) 
+    test (seg_overlap s2 (seg_of 3. 12. 0.012)) 
         "seg_overlap misidentified containing overlap" ;;
  
-let ie_op_tests =
-    test_eq (ie_add ie1 ie2) (seg_of 6. 12. (err_add ie1 ie2)) 
-        "ie_add failed" ;
-    test_eq (ie_sub ie1 ie2) (seg_of (-6.) 0. (err_sub ie1 ie2))
-        "ie_sub failed" ;
-    test_eq (ie_mul ie1 ie2) (seg_of 8. 32. (err_mul ie1 ie2))
-        "ie_mul failed" ;
-    test_eq (ie_div ie2 ie1) (seg_of 1. 4. (err_div ie2 ie1))
-        "ie_div failed" ;;
+let seg_op_tests =
+    test_eq (seg_add s1 s2) (seg_of 6. 12. (err_add s1 s2)) 
+        "seg_add failed" ;
+    test_eq (seg_sub s1 s2) (seg_of (-6.) 0. (err_sub s1 s2))
+        "seg_sub failed" ;
+    test_eq (seg_mul s1 s2) (seg_of 8. 32. (err_mul s1 s2))
+        "seg_mul failed" ;
+    test_eq (seg_div s2 s1) (seg_of 1. 4. (err_div s2 s1))
+        "seg_div failed" ;;
 
-let ie_lt_test =
-    test_bool (ie_lt ie3 ie1) (ie3, ie1) "ie_lt failed no-change test" ;
-    test_bool (ie_lt ie1 ie4) 
-              (seg_of ie1.int.l (ie4.int.u -. ulp ie4.int.u) ie1.err, 
-               seg_of (ie1.int.l +. ulp ie1.int.l) ie4.int.u ie4.err)
-              "ie_lt failed boundary test" ;
-    test_bool (ie_lt ie5 ie1) 
-              (seg_of ie5.int.l (ie1.int.u -. ulp ie1.int.u) ie5.err, ie1) 
+let seg_lt_test =
+    test_bool (seg_lt s3 s1) (s3, s1) "seg_lt failed no-change test" ;
+    test_bool (seg_lt s1 s4) 
+              (seg_of s1.int.l (s4.int.u -. ulp s4.int.u) s1.err, 
+               seg_of (s1.int.l +. ulp s1.int.l) s4.int.u s4.err)
+              "seg_lt failed boundary test" ;
+    test_bool (seg_lt s5 s1) 
+              (seg_of s5.int.l (s1.int.u -. ulp s1.int.u) s5.err, s1) 
               "intr_lt failed overlap test" ;; 
 
-let ie_le_test =
-    test_bool (ie_le ie3 ie1) (ie3, ie1) "ie_le failed no-change test" ;
-    test_bool (ie_le ie1 ie4) (seg_of ie1.int.l ie4.int.u ie1.err,
-                               seg_of ie1.int.l ie4.int.u ie4.err)
-              "ie_le failed boundary test" ;
-    test_bool (ie_le ie5 ie1) (seg_of ie5.int.l ie1.int.u ie5.err, ie1) 
-              "ie_le failed overlap test" ;; 
+let seg_le_test =
+    test_bool (seg_le s3 s1) (s3, s1) "seg_le failed no-change test" ;
+    test_bool (seg_le s1 s4) (seg_of s1.int.l s4.int.u s1.err,
+                               seg_of s1.int.l s4.int.u s4.err)
+              "seg_le failed boundary test" ;
+    test_bool (seg_le s5 s1) (seg_of s5.int.l s1.int.u s5.err, s1) 
+              "seg_le failed overlap test" ;; 
 
-let ie_gt_test =
-    test_bool (ie_gt ie3 ie1) (seg_of (ie1.int.l +. ulp ie1.int.l) ie3.int.u ie3.err,
-                               seg_of ie1.int.l (ie3.int.u -. ulp ie3.int.u) ie1.err)
-              "ie_gt failed overlap test" ;
-    test_bool (ie_gt ie2 ie1) (ie2, ie1) "ie_gt failed no-change test" ;;
-    test_bool (ie_gt ie5 ie1) 
-              (seg_of (ie1.int.l +. ulp ie1.int.l) ie5.int.u ie5.err, ie1) 
-              "ie_gt failed overlap test" ;;
+let seg_gt_test =
+    test_bool (seg_gt s3 s1) (seg_of (s1.int.l +. ulp s1.int.l) s3.int.u s3.err,
+                               seg_of s1.int.l (s3.int.u -. ulp s3.int.u) s1.err)
+              "range_seg failed overlap test" ;
+    test_bool (seg_gt s2 s1) (s2, s1) "seg_gt failed no-change test" ;;
+    test_bool (seg_gt s5 s1) 
+              (seg_of (s1.int.l +. ulp s1.int.l) s5.int.u s5.err, s1) 
+              "seg_gt failed overlap test" ;;
 
-let ie_ge_test =
-    test_bool (ie_ge ie3 ie1) 
-              (seg_of ie1.int.l ie3.int.u ie3.err,
-               seg_of ie1.int.l ie3.int.u ie1.err)
-              "ie_ge failed overlap test" ;
-    test_bool (ie_ge ie2 ie1) (ie2, ie1) "ie_ge failed no-change test" ;;
-    test_bool (ie_ge ie5 ie1) (seg_of ie1.int.l ie5.int.u ie5.err, ie1) 
-              "ie_ge failed overlap test" ;;
+let seg_ge_test =
+    test_bool (seg_ge s3 s1) 
+              (seg_of s1.int.l s3.int.u s3.err,
+               seg_of s1.int.l s3.int.u s1.err)
+              "seg_ge failed overlap test" ;
+    test_bool (seg_ge s2 s1) (s2, s1) "seg_ge failed no-change test" ;;
+    test_bool (seg_ge s5 s1) (seg_of s1.int.l s5.int.u s5.err, s1) 
+              "seg_ge failed overlap test" ;;
 
-let ie_eq_test = 
-    let out1 = seg_of ie1.int.l ie3.int.u ie1.err in
-    let out2 = seg_of ie1.int.l ie3.int.u ie3.err in
-    test_bool (ie_eq ie1 ie3) (out1, out2) "ie_eq failed test" ;;
+let seg_eq_test = 
+    let out1 = seg_of s1.int.l s3.int.u s1.err in
+    let out2 = seg_of s1.int.l s3.int.u s3.err in
+    test_bool (seg_eq s1 s3) (out1, out2) "seg_eq failed test" ;;
 
-let ie_neq_test = 
-    test_bool (ie_neq ie1 ie2) (ie1, ie2) "ie_neq test failed" ;;
+let seg_neq_test = 
+    test_bool (seg_neq s1 s2) (s1, s2) "seg_neq test failed" ;;
 
-let ie_without_test =
-    test_lst [ ie3 ] (ie_without ie3 ie2) "ie_without failed no-change test" ;
+let seg_without_test =
+    test_lst [ s3 ] (seg_without s3 s2) "seg_without failed no-change test" ;
     (* Perhaps we need to offset by ulp here? *)
-    test_lst [ seg_of ie5.int.l ie1.int.l ie5.err ; 
-              seg_of ie1.int.u ie5.int.u ie5.err ] (ie_without ie5 ie1) 
-        "ie_without failed containing test" ;
-    test_lst [ seg_of ie3.int.l ie1.int.l ie3.err ] (ie_without ie3 ie1) 
-        "ie_without failed overlap test" ;;
+    test_lst [ seg_of s5.int.l s1.int.l s5.err ; 
+              seg_of s1.int.u s5.int.u s5.err ] (seg_without s5 s1) 
+        "seg_without failed containing test" ;
+    test_lst [ seg_of s3.int.l s1.int.l s3.err ] (seg_without s3 s1) 
+        "seg_without failed overlap test" ;;
 
-let ie_union_test = 
-    test_lst [ie1 ; ie2] (ie_union ie1 ie2) "ie_union failed no-change test" ;
-    test_lst (ie1 :: (ie_without ie5 ie1)) (ie_union ie5 ie1) 
-        "ie_union overlap test failed" ;;
+let seg_union_test = 
+    test_lst [s1 ; s2] (seg_union s1 s2) "seg_union failed no-change test" ;
+    test_lst (s1 :: (seg_without s5 s1)) (seg_union s5 s1) 
+        "seg_union overlap test failed" ;;
 
 
 (* Error Testing *)
 let ulp_op_test = 
-    test_eq (ulp_add ie1 ie2) (0.5 *. ulp (4. +. 8.))
+    test_eq (ulp_add s1 s2) (0.5 *. ulp (4. +. 8.))
         "ulp_add failed test" ;
-    test_eq (ulp_sub ie1 ie2) (0.5 *. ulp (4. +. 8.))
+    test_eq (ulp_sub s1 s2) (0.5 *. ulp (4. +. 8.))
         "ulp_sub failed test" ;
-    test_eq (ulp_mul ie1 ie2) (0.5 *. ulp (4. *. 8.))
+    test_eq (ulp_mul s1 s2) (0.5 *. ulp (4. *. 8.))
         "ulp_mul failed test" ;
-    test_eq (ulp_div ie1 ie2) (0.5 *. ulp (4. /. 4.))
+    test_eq (ulp_div s1 s2) (0.5 *. ulp (4. /. 4.))
         "ulp_div failed test" ;;
 
 (* TODO: Look into potentially negative error here? Probably need an absolute value... *)
 let err_tests =
-    test_eq (err_add ie1 ie2) (ie1.err +. ie2.err +. (ulp_add ie1 ie2)) 
+    test_eq (err_add s1 s2) (s1.err +. s2.err +. (ulp_add s1 s2)) 
         "err_add failed test" ;
-    test_eq (err_add ie1 (seg_of 1. 2. infinity)) infinity 
+    test_eq (err_add s1 (seg_of 1. 2. infinity)) infinity 
         "err_add failed infinity test";
-    test_eq (err_sub ie1 ie2) (ie1.err +. ie2.err +. (ulp_sub ie1 ie2))
+    test_eq (err_sub s1 s2) (s1.err +. s2.err +. (ulp_sub s1 s2))
         "err_sub failed test" ;
-    test_eq (err_mul ie1 ie2) 
+    test_eq (err_mul s1 s2) 
         ((4. *. 0.101) +. (8. *. 0.03) +. (0.03 *. 0.101) +. 
-        (ulp_mul ie1 ie2))
+        (ulp_mul s1 s2))
         "err_mul failed test" ;
-    test_eq (err_div ie2 ie1)
+    test_eq (err_div s2 s1)
         ((((4. *. 0.101) -. (8. *. 0.03)) /. ((4. *. 4.) +. (4. *. 0.03))) +. 
-        (ulp_div ie2 ie1))
+        (ulp_div s2 s1))
         "err_div failed test" ;;
 
 (* Util Testing *)
@@ -282,8 +282,8 @@ let t2 = Eterm [ seg_of 1. 2. 0.001 ; seg_of 2. 4. 0.02 ] ;;
 let range_tests = 
     test_eq (range x) (intr_of 2. 8.) "range failed happy path test" ;
     test_eq (range Bot) intr_bot "range failed bot test" ;
-    test_eq (range_ie x) (seg_of 2. 8. 0.0) "range_ie failed happy path test" ;
-    test_eq (range_ie Bot) seg_bot "range_ie failed bot test" ;;
+    test_eq (range_seg x) (seg_of 2. 8. 0.0) "range_seg failed happy path test" ;
+    test_eq (range_seg Bot) seg_bot "range_seg failed bot test" ;;
 
 let get_segs_test =
     test_eq (get_segs x) [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ] 
@@ -420,7 +420,6 @@ let partition_overlap_test =
                  ([seg_of 2. 4. 0.02], [seg_of 1. 2. 0.001])
                  "partition_overlap failed ... test" ;;
 
-
 let eterm_seg_union_test = 
     test_ets (eterm_seg_union x (seg_of 4. 7. 0.001)) x
         "eterm_seg_union failed no-change test" ;
@@ -464,6 +463,11 @@ let test2 =
         CRet (CVar ("x", FloatTyp)))
     ;;
 
+let parse_test = 
+    let t1 = (parse_file "c/test.c") in 
+    let t2 = (parse_file "c/test2.c") in 
+    test_eq (transform t1 "main") test1 "Parser failed test1" ;
+    test_eq (transform t2 "main") test2 "Parser failed test2"  ;;
 (* This is functionally the same as test2.  The difference is if the
    initialization statement of the forloop is inside the loop or just before it.
    Really just a presentation problem that seems to be intrinsic to CIL. *)
@@ -480,15 +484,6 @@ let test3 =
         CRet (CVar ("x", FloatTyp)))
     ;;
 *)
-
-let parse_test = 
-    let t1 = (parse_file "c/test.c") in 
-    let t2 = (parse_file "c/test2.c") in 
-    (* let t3 = (parse_file "c/test3.c") in  *)
-    test_eq (transform t1) test1 "Parser failed test1" ;
-    test_eq (transform t2) test2 "Parser failed test2"
-    (* test_eq (transform t3) test3 "Parser failed test3" *)
-    ;;
 
 (* Interpreter Testing *)
 (* ---------------------- *)
