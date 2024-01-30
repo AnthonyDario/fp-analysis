@@ -36,8 +36,11 @@ let eterm_append et segs =
          | [] -> Bot
          | _  -> Eterm segs) ;;
 
-(* Convert to an integer interval for casting purposes *)
+
+(* Convert to and from an integer interval for casting purposes *)
 let eterm_to_iintr et = intr_to_iintr (range et) ;;
+let iintr_to_eterm ii = Eterm [seg_of (Float.of_int ii.low) (Float.of_int ii.up) 0.0] ;;
+
 
 (* Arithmetic operators *)
 (* ------------------------- *)
@@ -107,7 +110,7 @@ and et_seg_u_inner segments s =
         else seg :: et_seg_u_inner segs s 
     | [] -> [s] ;;
 
-let eterm_union l r = 
+let eterm_union (l : eterm) (r : eterm) : eterm = 
     match l, r with
     | Eterm le, Eterm re -> 
         let segs = sort (fun s1 s2 -> Float.compare s1.int.l s2.int.l) (le @ re) in

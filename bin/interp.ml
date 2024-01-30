@@ -100,16 +100,20 @@ let abst_op left right op =
     | _, _ -> (Bot, Bot) ;;
     
 
-
+(* Need to maintain the types of each side of the operator *)
 let abst_bool_op l r iintr_op eterm_op = 
     let (ltrm, lid) = l in
     let (rtrm, rid) = r in
-    let wrap (l, r) cons = ((cons l, lid), (cons r, rid)) in
-    let intc, fltc = (fun x -> AInt x), (fun x -> AFloat x) in
+    let wrap (l, r) cons = ((cons l, lid), (cons r, rid)) in   (* wrap into a tuple *)
+    let intc, fltc = (fun x -> AInt x), (fun x -> AFloat x) in (* put value in constructors *)
     match ltrm, rtrm with
     | AInt ii1, AInt ii2 -> wrap (iintr_op ii1 ii2) intc
-    | AInt ii, AFloat et -> wrap (iintr_op ii (eterm_to_iintr et)) intc
-    | AFloat et, AInt ii -> wrap (iintr_op (eterm_to_iintr et) ii) intc
+    | AInt ii, AFloat et -> 
+        ((AInt (fst (iintr_op ii (eterm_to_iintr et))), lid), 
+         (AFloat (snd (eterm_op (iintr_to_eterm ii) et)), rid))
+    | AFloat et, AInt ii -> 
+        ((AFloat (fst (eterm_op et (iintr_to_eterm ii))), lid),
+         (AInt (snd (iintr_op (eterm_to_iintr et) ii)), rid))
     | AFloat et1, AFloat et2 ->
         wrap (abst_op et1 et2 eterm_op) fltc ;;
 
@@ -141,7 +145,7 @@ let asem_bexp exp mem =
         let ((new_l, lid), (new_r, rid)) = abst_gt (asem_aexp l m) (asem_aexp r m) in
         amem_update lid new_l (amem_update rid new_r mem)
 
-let aval_union a1 a2 = 
+let aval_union (a1 : aval) (a2 : aval) : aval = 
     match a1, a2 with
     | AInt ii1, AInt ii2 -> AInt (iintr_union ii1 ii2)
     | AInt ii, AFloat et -> AInt (iintr_union ii (eterm_to_iintr et))

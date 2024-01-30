@@ -63,6 +63,11 @@ let str_eterm trm =
                     ^ "}"
     | Bot       -> "_" ;;
 
+let str_id (id : id) = 
+    match id with
+    | Id n -> n
+    | Const -> "Const" ;;
+
 let str_aval v =
     match v with
     | AInt i -> str_iInterval i

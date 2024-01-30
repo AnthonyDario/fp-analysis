@@ -92,8 +92,7 @@ let fail_lookup (x : string) (m : string -> aval option) =
 
 let amem_bot = { dom = SS.empty ; lookup = fun _ -> None } ;;
 
-(* amem_update : id -> float -> amem -> amem *)
-let amem_update n v m = 
+let amem_update (n : id) (v : aval) (m : amem) : amem = 
     let { dom = mdom ; lookup = look } = m in
     match n with 
     | Id id -> 
