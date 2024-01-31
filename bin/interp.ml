@@ -64,8 +64,9 @@ let aval_op l r iintr_op eterm_op =
         AInt (iintr_op ii (eterm_to_iintr et))
     | AFloat et1, AFloat et2 -> AFloat (eterm_op et1 et2) ;;
 
-(* [[A]] : aaexp -> eterm *)
-let rec asem_aexp exp m =
+(* [[A]] *)
+let rec asem_aexp (exp : aaexp) (mem : amem) =
+    let { dom = _ ; lookup = m } = mem in
     match exp with
     | AVal e      -> (e, Const)
     | AVar (n, _) -> (
@@ -73,20 +74,20 @@ let rec asem_aexp exp m =
         | Some v -> (v, Id n)
         | None -> raise (UnassignedVariableException n))
     | AAdd (l, r) -> 
-        (aval_op (fst (asem_aexp l m)) 
-                  (fst (asem_aexp r m)) 
+        (aval_op (fst (asem_aexp l mem)) 
+                  (fst (asem_aexp r mem)) 
                   iintr_add eadd, Const)
     | ASub (l, r) -> 
-        (aval_op (fst (asem_aexp l m)) 
-                  (fst (asem_aexp r m)) 
+        (aval_op (fst (asem_aexp l mem)) 
+                  (fst (asem_aexp r mem)) 
                   iintr_sub esub, Const)
     | AMul (l, r) ->
-        (aval_op (fst (asem_aexp l m)) 
-                  (fst (asem_aexp r m)) 
+        (aval_op (fst (asem_aexp l mem)) 
+                  (fst (asem_aexp r mem)) 
                   iintr_mul emul, Const)
     | ADiv (l, r) -> 
-        (aval_op (fst (asem_aexp l m)) 
-                  (fst (asem_aexp r m)) 
+        (aval_op (fst (asem_aexp l mem)) 
+                  (fst (asem_aexp r mem)) 
                   iintr_div ediv, Const) ;;
 
 (* abstract boolean operators *)
@@ -124,26 +125,25 @@ let abst_ge left right = abst_bool_op left right iintr_ge eterm_ge ;;
 let abst_eq left right = abst_bool_op left right iintr_eq eterm_eq ;;
 let abst_neq left right = abst_bool_op left right iintr_neq eterm_neq ;;
 
-(* [[B]] : amem -> amem *)
-let asem_bexp exp mem =
-    let { dom = _ ; lookup = m } = mem in
+(* [[B]] *)
+let asem_bexp (exp : abexp) (m : amem) =
     match exp with
     | ALt (l, r) -> 
         let ((new_l, lid), (new_r, rid)) = abst_lt (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r mem)
+        amem_update lid new_l (amem_update rid new_r m)
     | ALe (l, r) -> 
         let ((new_l, lid), (new_r, rid)) = abst_le (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r mem)
+        amem_update lid new_l (amem_update rid new_r m)
     | AEq (l, r) -> 
         let ((new_l, lid), (new_r, rid)) = abst_eq (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r mem)
-    | ANe _ -> mem
+        amem_update lid new_l (amem_update rid new_r m)
+    | ANe _ -> m
     | AGe (l, r) ->
         let ((new_l, lid), (new_r, rid)) = abst_ge (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r mem)
+        amem_update lid new_l (amem_update rid new_r m)
     | AGt (l, r) -> 
         let ((new_l, lid), (new_r, rid)) = abst_gt (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r mem)
+        amem_update lid new_l (amem_update rid new_r m)
 
 let aval_union (a1 : aval) (a2 : aval) : aval = 
     match a1, a2 with
@@ -225,7 +225,7 @@ let comp f g x = f (g x) ;;
 
 let rec asem_stmt exp is m =
     match exp with
-    | AAsgn (id, e) -> amem_update (Id id) (fst (asem_aexp e m.lookup)) m 
+    | AAsgn (id, e) -> amem_update (Id id) (fst (asem_aexp e m)) m 
     | AIf (c, t, e) -> 
         u_amem (asem_stmt t is (asem_bexp c m)) 
                (asem_stmt e is (asem_bexp (not_abexp c) m))

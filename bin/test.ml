@@ -559,12 +559,8 @@ let test2 =
 let parser_testing () = 
     let t1 = (parse_file "c/test1.c") in 
     let t2 = (parse_file "c/test2.c") in 
-    test_eq (transform t1 "main") test1 "Parser failed test1" ;
+    test_eq (transform t1 "foo") test1 "Parser failed test1" ;
     test_eq (transform t2 "main") test2 "Parser failed test2"  ;;
-    (*
-    test_eq (transform t3 "factorial" test3 "Parser failed test3") 
-    ;;
-    *)
 
 (* This is functionally the same as test2.  The difference is if the
    initialization statement of the forloop is inside the loop or just before it.

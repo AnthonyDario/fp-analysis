@@ -97,7 +97,7 @@ let amem_update (n : id) (v : aval) (m : amem) : amem =
     match n with 
     | Id id -> 
         { dom = SS.add id mdom ; 
-          lookup = fun x -> if id == x then Some v else look x }
+          lookup = fun x -> if id = x then Some v else look x }
     | Const -> m ;;
 
 (* amem_contains : amem -> string -> bool *)
