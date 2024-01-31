@@ -1,4 +1,4 @@
-int foo (int x) {
+int foo (double x) {
     if (x >= 12) {
         x = x + 5.7;
     } else {

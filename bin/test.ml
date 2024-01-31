@@ -539,11 +539,9 @@ let eterm_testing () =
 
 let test1 = 
     CCol (
-        CCol (
-            CAsgn ("x", CVal (CFloat 12.1)),
-            CIf (CGe (CVar ("x", FloatTyp), CVal (CInt 12)),
-                 CAsgn ("x", CAdd (CVar ("x", FloatTyp), CVal (CFloat 5.7))),
-                 CAsgn ("x", CMul (CVal (CFloat 3.1), CVar ("x", FloatTyp))))),
+        CIf (CGe (CVar ("x", FloatTyp), CVal (CInt 12)),
+             CAsgn ("x", CAdd (CVar ("x", FloatTyp), CVal (CFloat 5.7))),
+             CAsgn ("x", CMul (CVal (CFloat 3.1), CVar ("x", FloatTyp)))),
         CRet (CVar ("x", FloatTyp)))
     ;;
 
