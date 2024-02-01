@@ -81,40 +81,5 @@ let eterm_eq l r = (chop l (range r) seg_eq, chop r (range l) seg_eq) ;;
 let eterm_neq l r = (l, r) ;;
 
 (* Union *)
-(* Merge an eterm with a single segment *)
-
-(* Partition the segments of et by f *)
-let partition_segs (et : eterm) (f : segment -> bool) : (segment list * segment list) = 
-    match et with
-    | Eterm segs -> partition f segs
-    | Bot        -> ([], [])
-
-(* Partition the segments in et by if they overlap with seg *)
-let partition_overlap (et : eterm) (seg : segment) = 
-    partition_segs et (fun i -> seg_overlap i seg) ;;
-
-(* Union an eterm with a segment *)
-let rec eterm_seg_union et seg =
-    match et with
-    | Eterm _ ->
-        let (overlap, nonoverlap) = partition_overlap et seg in
-        merge (eterm_append (Eterm nonoverlap) (et_seg_u_inner overlap seg))
-    | Bot -> Bot
-(* segment list * segment -> segment list *)
-and et_seg_u_inner segments s =
-    match segments with
-    | seg :: segs -> 
-        if seg.err < s.err (* if the current segment's error is less than the mergee's *)
-        then seg_without seg s @ et_seg_u_inner segs s (* then remove any overlap *)
-        (* Don't need to remove overlap here because, there is no overlap in an eterm *)
-        else seg :: et_seg_u_inner segs s 
-    | [] -> [s] ;;
-
-let eterm_union (l : eterm) (r : eterm) : eterm = 
-    match l, r with
-    | Eterm le, Eterm re -> 
-        let segs = sort (fun s1 s2 -> Float.compare s1.int.l s2.int.l) (le @ re) in
-        (match segs with
-         | hd :: tl -> fold_left (fun acc s -> eterm_seg_union acc s) (Eterm [hd]) tl
-         | [] -> Bot)
-    | _, _ -> Bot ;;
+let eterm_union (l : eterm) (r : eterm) : eterm =
+    merge (eterm_append l (get_segs r)) ;;

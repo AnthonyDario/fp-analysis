@@ -480,38 +480,6 @@ let eterm_eq_test () =
 let eterm_neq_test () = test_ets_b (eterm_neq x y) (x, y) "eterm_neq failed test" ;;
 
 
-let partition_overlap_test () = 
-    test_tup_lst (partition_overlap x (seg_of 5. 9. 0.12))
-                 ([seg_of 4. 8. 0.01], [seg_of 2. 4. 0.02])
-                 "partition_overlap failed overlap higher segment test" ;
-    test_tup_lst (partition_overlap x (seg_of 2. 3. 0.12))
-                 ([seg_of 2. 4. 0.02], [seg_of 4. 8. 0.01])
-                 "partition_overlap failed overlap lower segment test" ;
-    test_tup_lst (partition_overlap x (seg_of 9. 12. 0.12))
-                 ([], get_segs x)
-                 "partition_overlap failed no-overlap test" ;
-    test_tup_lst (partition_overlap x (seg_of 3. 12. 0.12))
-                 (get_segs x, [])
-                 "partition_overlap failed multiple overlap test" ;
-    test_tup_lst (partition_overlap t2 (seg_of 3. 6. 0.11))
-                 ([seg_of 2. 4. 0.02], [seg_of 1. 2. 0.001])
-                 "partition_overlap failed ... test" ;;
-
-
-let eterm_seg_union_test () = 
-    test_ets (eterm_seg_union x (seg_of 4. 7. 0.001)) x
-        "eterm_seg_union failed no-change test" ;
-    test_ets (eterm_seg_union x (seg_of 4. 7. 0.03))
-             (Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 7. 0.03 ; seg_of 7. 8. 0.01 ])
-        "eterm_seg_union failed upper-contains test" ;
-    test_ets (eterm_seg_union x (seg_of 3. 6. 0.015))
-             (Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 6. 0.015 ; seg_of 6. 8. 0.01 ])
-        "eterm_seg_union failed middle union test" ;
-    test_ets (eterm_seg_union t2 (seg_of 3. 6. 0.011))
-             (Eterm [ seg_of 1. 2. 0.001 ; seg_of 2. 4. 0.02 ; seg_of 4. 6. 0.011])
-        "eterm_seg_union failed ... test" ;;
-
-
 let eterm_union_test () =
     test_ets (eterm_union x y)
              (Eterm [ seg_of 1. 2. 0.001 ; seg_of 2. 4. 0.02 ;
@@ -531,8 +499,6 @@ let eterm_testing () =
     eterm_ge_test () ;
     eterm_eq_test () ;
     eterm_neq_test () ;
-    partition_overlap_test () ;
-    eterm_seg_union_test () ;
     eterm_union_test () ;;
 
 (* Parser Testing *)
@@ -624,3 +590,4 @@ let runtests () =
     util_testing () ;
     eterm_testing () ; 
     parser_testing () ;;
+
