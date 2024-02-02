@@ -62,8 +62,8 @@ let not_abexp abexp =
     | ALe (l, r) -> AGt (l, r)
     | AEq (l, r) -> ANe (l, r)
     | ANe (l, r) -> AEq (l, r)
-    | AGe (l, r) -> AGe (l, r)
-    | AGt (l, r) -> AGt (l, r) ;;
+    | AGe (l, r) -> ALt (l, r)
+    | AGt (l, r) -> ALe (l, r) ;;
 
 type astmt = 
     | AAsgn of string * aaexp

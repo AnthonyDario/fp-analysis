@@ -118,12 +118,12 @@ let abst_bool_op l r iintr_op eterm_op =
     | AFloat et1, AFloat et2 ->
         wrap (abst_op et1 et2 eterm_op) fltc ;;
 
-let abst_lt left right = abst_bool_op left right iintr_lt eterm_lt ;;
-let abst_le left right = abst_bool_op left right iintr_le eterm_le ;;
-let abst_gt left right = abst_bool_op left right iintr_gt eterm_gt ;;
-let abst_ge left right = abst_bool_op left right iintr_ge eterm_ge ;;
-let abst_eq left right = abst_bool_op left right iintr_eq eterm_eq ;;
-let abst_neq left right = abst_bool_op left right iintr_neq eterm_neq ;;
+let abst_lt l r = abst_bool_op l r iintr_lt eterm_lt ;;
+let abst_le l r = abst_bool_op l r iintr_le eterm_le ;;
+let abst_gt l r = abst_bool_op l r iintr_gt eterm_gt ;;
+let abst_ge l r = abst_bool_op l r iintr_ge eterm_ge ;;
+let abst_eq l r = abst_bool_op l r iintr_eq eterm_eq ;;
+let abst_neq l r = abst_bool_op l r iintr_neq eterm_neq ;;
 
 (* [[B]] *)
 let asem_bexp (exp : abexp) (m : amem) =
