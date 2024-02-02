@@ -4,6 +4,7 @@ int foo (double x) {
     } else {
         x = 3.1 * x;
     }
+
     return x;
 }
 

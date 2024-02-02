@@ -32,6 +32,38 @@ let test_tup_lst ins outs = test_tuple ins outs test_lst ;;
 let test_ets et1 et2 m = test_lst (get_segs et1) (get_segs et2) m ;;
 let test_ets_b input output m = test_tuple input output test_ets m ;;
 
+(* Util Testing *)
+(* ---------------------- *)
+
+let xs = [ 1 ; 1 ; 2 ; ] ;;
+let ys = [ 2 ; 4 ; 8 ; ] ;;
+let out = [ 3 ; 5 ; 9 ; 3 ; 5; 9 ; 4 ; 6 ; 10 ];;
+
+let product_map_test () =
+    test_lst out (product_map (+) xs ys) "product_map failed test" ;;
+
+
+let extremes_test () = 
+    let lst = [ 5. ; 6. ; 1.4; 2.2 ] in
+    test_eq 1.4 (min_flt lst) "min_flt failed test" ;
+    test_eq 6. (max_flt lst) "max_flt failed test" ;;
+
+
+let last_test () =
+    test_eq 1 (last [2 ; 1]) "last failed test" ;;
+
+
+let remove_last_test () =
+    test_eq [1 ; 2 ; 3 ; 4] 
+            (remove_last [1; 2; 3; 4; 5]) 
+            "remove_last failed test" ;;
+
+let util_testing () = 
+    product_map_test () ;
+    extremes_test () ;
+    last_test () ;
+    remove_last_test () ;;
+
 (* Interval Testing *)
 (* ---------------------- *)
 let i1 = intr_of 2. 4. ;;
@@ -304,38 +336,6 @@ let seg_testing () =
     seg_union_test () ;
     ulp_op_test () ;
     err_tests () ;;
-
-(* Util Testing *)
-(* ---------------------- *)
-
-let xs = [ 1 ; 1 ; 2 ; ] ;;
-let ys = [ 2 ; 4 ; 8 ; ] ;;
-let out = [ 3 ; 5 ; 9 ; 3 ; 5; 9 ; 4 ; 6 ; 10 ];;
-
-let product_map_test () =
-    test_lst out (product_map (+) xs ys) "product_map failed test" ;;
-
-
-let extremes_test () = 
-    let lst = [ 5. ; 6. ; 1.4; 2.2 ] in
-    test_eq 1.4 (min_flt lst) "min_flt failed test" ;
-    test_eq 6. (max_flt lst) "max_flt failed test" ;;
-
-
-let last_test () =
-    test_eq 1 (last [2 ; 1]) "last failed test" ;;
-
-
-let remove_last_test () =
-    test_eq [1 ; 2 ; 3 ; 4] 
-            (remove_last [1; 2; 3; 4; 5]) 
-            "remove_last failed test" ;;
-
-let util_testing () = 
-    product_map_test () ;
-    extremes_test () ;
-    last_test () ;
-    remove_last_test () ;;
 
 
 (* Eterm Testing *)
