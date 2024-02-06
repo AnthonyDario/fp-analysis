@@ -55,7 +55,7 @@ let merge et =
 (* eterm -> eterm -> eterm list *)
 let eop le re op =
     match le, re with
-    | Eterm ls, Eterm rs -> merge (Eterm (product_map op ls rs))
+    | Eterm ls, Eterm rs -> merge (Eterm (concat (product_map op ls rs)))
     | _, _ -> Bot ;;
 
 let eadd le re = eop le re seg_add ;;

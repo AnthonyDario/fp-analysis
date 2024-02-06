@@ -4,6 +4,8 @@ open List
 open Round
 open Util
 
+exception IntervalError of string ;;
+
 (* Interval definitions *)
 (* -------------------------- *)
 
@@ -18,6 +20,8 @@ let intr_bot = { l = 1. ; u = -1.} ;;
 let intr_of l u = if l > u then intr_bot else {l = l ; u = u} ;;
 (* exclusive *)
 let intr_of_exc l u = if l >= u then intr_bot else {l = l ; u = u} ;;
+
+let intr_of_int i = {l = Float.of_int i; u = Float.of_int i} ;;
 
 (* Int interval *)
 type iInterval = {
@@ -34,7 +38,7 @@ let iintr_to_intr i = { l = Float.of_int i.low ; u = Float.of_int i.up } ;;
 (* Useful utils *)
 (* -------------------------- *)
 let contains i v = i.l <= v && i.u >= v ;;
-let intr_overlap i1 i2 = 
+let intr_overlap (i1 : interval) (i2 : interval) : bool = 
     i1.l <= i2.l && i1.u >= i2.l ||
     i2.l <= i1.l && i2.u >= i1.l ||
     i1.u >= i2.u && i1.l <= i2.u ||
@@ -141,9 +145,35 @@ let intr_union i1 i2 =
     let { l = i2l ; u = i2u } = i2 in
     { l = min_flt [i1l ; i2l]; u = max_flt [i1u ; i2u] } ;;
 
-(* Remove i2 from i1, produces a list of intervals *)
-let intr_without i1 i2 =
+(* Gets the sections of i1 that don't overlap with i2 *)
+let intr_without (i1 : interval) (i2 : interval) : interval list = 
     filter (fun x -> x != intr_bot)
            (if i1.l < i2.l
             then [ intr_of_exc i1.l (min_flt [i2.l ; i1.u]) ; intr_of_exc i2.u i1.u ]
             else [ intr_of_exc (max_flt [i2.u ; i1.l]) i1.u ]) ;;
+
+(* Get the section of i1 that overlap with i2 *)
+let intr_with (i1 : interval) (i2 : interval) : interval =
+    if i1.l < i2.l
+    then intr_of_exc i2.l (min_flt [i1.u ; i2.u])
+    else intr_of_exc i1.l (min_flt [i1.u ; i2.u]) ;;
+
+(* First element of return is i1 without any overlap of i2.  Second element is
+ * overlapping portion *)
+let intr_partition (i1 : interval) (i2 : interval) 
+    : (interval list * interval) = 
+    (intr_without i1 i2, intr_with i1 i2) ;;
+
+(* Get the intervals which meets the Sterbenz condition for i *)
+let rec get_sterbenz_intr (i : interval) : interval = 
+    if contains i 0.0 then intr_bot
+    else if i.l >= 0. then
+        intr_of 
+            ((intr_div i (intr_of_int 2)).u)
+            ((intr_mul i (intr_of_int 2)).l)
+    else if i.u <= 0. then
+        intr_of
+            ((intr_mul i (intr_of_int 2)).u)
+            ((intr_div i (intr_of_int 2)).l)
+    else
+            raise (IntervalError "missing case when getting sterbenz_intervals") ;;
