@@ -160,6 +160,25 @@ let intr_union_test () =
     test_eq (intr_union i5 i1) i5 "intr_union overlap test failed" ;;
 
 
+let intr_partition_test () = 
+    test_eq (intr_partition i3 i2) ([i3], intr_bot) 
+            "intr_partition failed no-change test" ;
+    (* Perhaps we need to offset by ulp here? *)
+    test_eq (intr_partition i5 i1) 
+            ([intr_of 1. 2. ; intr_of 4. 5.], i1)
+            "intr_partition failed containing test" ;
+    test_eq (intr_partition i3 i1) 
+            ([intr_of 1. 2.], intr_of 2. 3.) 
+            "intr_partition failed overlap test" ;
+    test_eq (intr_partition i1 i5) ([], i1)
+            "intr_partition failed enveloped test" ;
+    test_eq (intr_partition i6 i1) ([], i6)
+            "intr_partition failed boundary test" ;;
+
+
+let intr_with_test () =
+    test_eq (intr_with i1 i2) intr_bot "intr_with failed test" ;;
+
 let intr_without_test () =
     test_eq (intr_without i3 i2) [i3] "intr_without failed no-change test" ;
     (* Perhaps we need to offset by ulp here? *)
@@ -171,7 +190,6 @@ let intr_without_test () =
         "intr_without failed enveloped test" ;
     test_eq (intr_without i6 i1) [] 
         "intr_without failed boundary test" ;;
-
 
 let intr_testing () =
     intr_of_test() ;
@@ -186,6 +204,8 @@ let intr_testing () =
     intr_eq_test () ;
     intr_neq_test () ;
     intr_union_test () ;
+    intr_partition_test () ;
+    intr_with_test () ;
     intr_without_test () ;;
     
 
@@ -215,14 +235,27 @@ let seg_overlap_test () =
         "seg_overlap misidentified containing overlap" ;;
  
 
+let seg_with_test () =
+    test_eq (seg_with s1 s2) seg_bot "seg_with failed test" ;;
+    
+
+let seg_partition_test () =
+    let (non_overlap, overlap) = seg_partition s2 s1 in
+    test_lst non_overlap [seg_of 4. 8. 0.101] "seg_partition failed overlap test" ;
+    test_eq overlap seg_bot "seg_partition failed non-overlap test" ;;
+
+
+let seg_get_sterbenz_test () =
+    test_eq (get_sterbenz_seg s1) (seg_of 2. 4. 0.03) "get_sterbenz_seg failed test" ;;
+
 let seg_op_tests () =
-    test_eq (seg_add s1 s2) (seg_of 6. 12. (err_add s1 s2)) 
+    test_lst (seg_add s1 s2) [(seg_of 6. 12. (err_add s1 s2))]
         "seg_add failed" ;
-    test_eq (seg_sub s1 s2) (seg_of (-6.) 0. (err_sub s1 s2))
+    test_lst (seg_sub s1 s2) [(seg_of (-6.) 0. (err_sub s1 s2))]
         "seg_sub failed" ;
-    test_eq (seg_mul s1 s2) (seg_of 8. 32. (err_mul s1 s2))
+    test_lst (seg_mul s1 s2) [(seg_of 8. 32. (err_mul s1 s2))]
         "seg_mul failed" ;
-    test_eq (seg_div s2 s1) (seg_of 1. 4. (err_div s2 s1))
+    test_lst (seg_div s2 s1) [(seg_of 1. 4. (err_div s2 s1))]
         "seg_div failed" ;;
 
 
@@ -286,6 +319,18 @@ let seg_without_test () =
         "seg_without failed overlap test" ;;
 
 
+let seg_withouts_test () =
+    test_lst (seg_withouts (seg_of 4. 8. 0.01)
+                           [seg_of 2. 4. 0.02 ; seg_of 4. 6. 0.011])
+             [seg_of 6. 8. 0.01]
+             "seg_withouts failed test" ;
+    test_lst (seg_withouts (seg_of 0. 1. 0.021)
+                           [seg_of (-4.) (-0.) 0.031 ; 
+                            seg_of 1. 5. 0.021001])
+             [seg_of 0. 1. 0.021]
+        "seg_without failed non-continuous test" ;;
+
+
 let seg_union_test () = 
     test_lst [s1 ; s2] (seg_union s1 s2) "seg_union failed no-change test" ;
     test_lst (s1 :: (seg_without s5 s1)) (seg_union s5 s1) 
@@ -325,6 +370,9 @@ let err_tests () =
 let seg_testing () =
     seg_of_test () ;
     seg_overlap_test () ;
+    seg_get_sterbenz_test () ;
+    seg_with_test () ;
+    seg_partition_test () ;
     seg_op_tests () ;
     seg_lt_test () ;
     seg_le_test () ;
@@ -333,6 +381,7 @@ let seg_testing () =
     seg_eq_test () ;
     seg_neq_test () ;
     seg_without_test () ;
+    seg_withouts_test () ;
     seg_union_test () ;
     ulp_op_test () ;
     err_tests () ;;
@@ -368,13 +417,19 @@ let append_test () =
 let merge_test () =
     let test = eterm_append x (get_segs y) in 
     let happy_test = Eterm [ seg_of 0. 1. 0.1 ; seg_of 1. 2. 0.2 ] in
+    let test2 = Eterm [ seg_of (-4.) 0. 0.031 ; seg_of 0. 1. 0.021 ;  
+                        seg_of 1. 5. 0.021001 ; seg_of 5. 7. 0.011 ] in
+    (* Format.printf "merge test:\n%s\n%s\n" (str_eterm (merge test2)) (str_eterm test2) ; *)
     test_lst (get_segs (merge happy_test))
-            (get_segs happy_test)
-            "merge failed no-change test" ;
+             (get_segs happy_test)
+             "merge failed no-change test" ;
     test_lst (get_segs (merge test))
-            ([ seg_of 1. 2. 0.001 ; seg_of 2. 4. 0.02 ; 
+             ([ seg_of 1. 2. 0.001 ; seg_of 2. 4. 0.02 ; 
                seg_of 4. 6. 0.011 ; seg_of 6. 8. 0.01 ])
-            "merge failed test" ;;
+             "merge failed test" ;
+    test_lst (get_segs (merge test2))
+             (get_segs test2)
+             "merge failed boundary test" ;;
 
 
 let eterm_arith_tests () = 
@@ -387,10 +442,10 @@ let eterm_arith_tests () =
                        seg_of 7. 14. (err_add x2 y2)]))
         "eadd failed test" ;
     test_ets (esub x y) 
-        (merge (Eterm [seg_of (-1.) 3. (err_sub x1 y1) ;
-                       seg_of (-4.) 1. (err_sub x1 y2) ;
-                       seg_of 1. 7. (err_sub x2 y1) ;
-                       seg_of (-2.) 5. (err_sub x2 y2)]))
+        (merge (Eterm [seg_of (-4.) 0. (err_sub x1 y2) ;
+                       seg_of 0. 1. (err_sbenz x1 y2) ;
+                       seg_of 1. 5. (err_sub x2 y2) ;
+                       seg_of 5. 7. (err_sub x2 y1)]))
         "esub failed test" ;
     test_ets (emul x y) 
         (merge (Eterm [seg_of 2. 12. (err_mul x1 y1) ;

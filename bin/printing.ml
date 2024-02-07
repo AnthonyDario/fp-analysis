@@ -45,22 +45,22 @@ let rec str_cstmt stmt =
 
 (* Abstract Domain *)
 let str_interval i =
-    "[" ^ Float.to_string i.l ^ 
-    " ; " ^ Float.to_string i.u ^ "]" ;;
+    "[" ^ Format.sprintf "%f" i.l ^ 
+    " ; " ^ Format.sprintf "%f" i.u ^ "]" ;;
 
 let str_iInterval i =
     "[" ^ Int.to_string i.low ^ 
     " ; " ^ Int.to_string i.up ^ "]" ;;
 
 let str_seg ie =
-    "(" ^ str_interval ie.int ^ ", " ^ Float.to_string ie.err ^ ")" ;;
+    "(" ^ str_interval ie.int ^ ", " ^ Format.sprintf "%f" ie.err ^ ")" ;;
+
+let str_segs segs =
+    (fold_left (fun acc s -> acc ^ s ^ ",\n\t") "{" (map str_seg segs)) ^ "}"
 
 let str_eterm trm = 
     match trm with
-    | Eterm ies -> (fold_left (fun acc s -> acc ^ s ^ ", ") 
-                              "{" 
-                              (map str_seg ies))
-                    ^ "}"
+    | Eterm ies -> str_segs ies
     | Bot       -> "_" ;;
 
 let str_id (id : id) = 

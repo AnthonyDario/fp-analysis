@@ -20,10 +20,24 @@ let seg_of l u err =
 let seg_overlap s1 s2 = intr_overlap s1.int s2.int ;;
 
 (* Same as intr without but maintain the error *)
-(* Remove seg1 from seg2 *)
+(* Remove seg2 from seg1 *)
 let seg_without (seg1 : segment) (seg2 : segment) : segment list =
     map (fun i -> seg_of i.l i.u seg1.err) 
         (intr_without seg1.int seg2.int) ;;
+
+
+(* Remove parts of s that overlap with any segment in the list of segs *)
+let rec segs_withouts (segs1 : segment list) (segs2 : segment list) : segment list =
+    match segs2 with
+    | s :: ses -> segs_withouts (segs_without segs1 s) ses
+    | [] -> segs1
+and segs_without (segs : segment list) (seg : segment) : segment list =
+    fold_left (fun acc s -> seg_without s seg @ acc) [] segs ;;
+
+
+let seg_withouts (s1 : segment) (s2 : segment list) : segment list =
+    segs_withouts [s1] s2 ;;
+
 
 (* The portions of s1 that overlap with s2 
  * Note that the error of segment1 is maintained here *)
@@ -95,7 +109,9 @@ let seg_sub_sbenz (x : segment) (y : segment) : segment =
 
 let seg_sub (x : segment) (y : segment) : segment list = 
     let reg, sbenz = (seg_partition y (get_sterbenz_seg x)) in
-    seg_sub_sbenz x sbenz :: map (seg_sub_reg x) reg ;;
+    if sbenz = seg_bot 
+    then map (seg_sub_reg x) reg  
+    else seg_sub_sbenz x sbenz :: map (seg_sub_reg x) reg ;;
 
 let seg_mul (x : segment) (y : segment) : segment list = 
     [seg_op x y intr_mul err_mul] ;;

@@ -19,7 +19,7 @@ let range et =
     | Bot        -> intr_bot ;;
 
 (* Utility to get the range as a segment datatype *)
-let range_seg et = 
+let range_seg (et : eterm) : segment = 
     let intr = range et in
     seg_of intr.l intr.u 0.0 ;;
 
@@ -28,7 +28,7 @@ let get_segs et =
     | Eterm segs -> segs
     | Bot -> [] ;;
 
-let eterm_append et segs = 
+let eterm_append (et : eterm) (segs : segment list) = 
     match et with
     | Eterm errs -> Eterm (errs @ segs)
     | Bot -> 
@@ -48,7 +48,7 @@ let merge et =
     let err_first = sort (fun s1 s2 -> Float.compare s2.err s1.err) (get_segs et) in
     match err_first with
     | x :: xs ->
-        fold_left (fun acc seg -> eterm_append acc (seg_without seg (range_seg acc))) 
+        fold_left (fun acc seg -> eterm_append acc (seg_withouts seg (get_segs acc)))
                   (Eterm [x]) xs
     | [] -> Bot ;;
 
