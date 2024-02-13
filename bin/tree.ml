@@ -37,7 +37,7 @@ type cstmt =
 type atyp = IntrTyp | AStepTyp
 
 type aval = 
-    | AInt   of iInterval
+    | AInt   of int intr
     | AFloat of eterm ;;
 
 type aaexp =

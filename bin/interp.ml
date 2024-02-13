@@ -11,7 +11,7 @@ exception UnassignedVariableException of string ;;
 (* Abstraction *)
 (* alpha : CStmt -> AStmt *)
 
-let abst_flt f = { int = { u = f ; l = f }; err = ulp f } ;;
+let abst_flt f = { int = Intr { u = f ; l = f }; err = ulp f } ;;
 
 let abst_typ typ =
     match typ with
@@ -20,7 +20,7 @@ let abst_typ typ =
 
 let abst_val v =
     match v with
-    | CInt i -> AInt { low = i ; up = i }
+    | CInt i -> AInt (Intr { l = i ; u = i })
     | CFloat f -> AFloat (Eterm [abst_flt f]) ;;
 
 let rec abst_aexp exp = 

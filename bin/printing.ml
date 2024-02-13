@@ -44,19 +44,27 @@ let rec str_cstmt stmt =
     ;;
 
 (* Abstract Domain *)
-let str_interval i =
-    "[" ^ Format.sprintf "%f" i.l ^ 
-    " ; " ^ Format.sprintf "%f" i.u ^ "]" ;;
+let str_interval intr =
+    match intr with
+    | Intr i ->
+        "[" ^ Format.sprintf "%f" i.l ^ 
+        " ; " ^ Format.sprintf "%f" i.u ^ "]"
+    | IntrErr -> "IntrErr"
+    | IntrBot -> "_|_" ;;
 
-let str_iInterval i =
-    "[" ^ Int.to_string i.low ^ 
-    " ; " ^ Int.to_string i.up ^ "]" ;;
+let str_iInterval intr =
+    match intr with
+    | Intr i ->
+        "[" ^ Int.to_string i.l ^ 
+        " ; " ^ Int.to_string i.u ^ "]"
+    | IntrErr -> "IntrErr"
+    | IntrBot -> "_|_" ;;
 
 let str_seg ie =
     "(" ^ str_interval ie.int ^ ", " ^ Format.sprintf "%f" ie.err ^ ")" ;;
 
 let str_segs segs =
-    (fold_left (fun acc s -> acc ^ s ^ ",\n\t") "{" (map str_seg segs)) ^ "}"
+    (fold_left (fun acc s -> acc ^ s ^ ", ") "{" (map str_seg segs)) ^ "}"
 
 let str_eterm trm = 
     match trm with

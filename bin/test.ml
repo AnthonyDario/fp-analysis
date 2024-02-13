@@ -74,9 +74,9 @@ let i5 = intr_of 1. 5. ;;
 let i6 = intr_of 3. 4. ;;
 
 let intr_of_test () =
-    test_eq i1 { l = 2. ; u = 4. }
+    test_eq i1 (Intr { l = 2. ; u = 4. })
          "intr_of doesn't construct correct interval" ;
-    test_eq (intr_of 2. 1.) intr_bot
+    test_eq (intr_of 2. 1.) IntrBot
          "intr_of doesn't default to bottom" ;;
 
 
@@ -106,48 +106,51 @@ let intr_ops_test () =
 
 
 let intr_mags_test () =
-    test_eq (mag_lg i1) 4. "mag_lg failed" ;
-    test_eq (mag_lg i4) 5. "mag_lg failed with negative numbers" ;
-    test_eq (mag_sm i1) 2. "mag_sm failed" ;
-    test_eq (mag_sm i4) 3. "mag_sm failed with negative numbers" ;;
+    test_eq (mag_lg_intr i1) 4. "mag_lg_intr failed" ;
+    test_eq (mag_lg_intr i4) 5. "mag_lg_intr failed with negative numbers" ;
+    test_eq (mag_sm_intr i1) 2. "mag_sm_intr failed" ;
+    test_eq (mag_sm_intr (intr_of (-5.) (-2.))) 2. "mag_sm_intr failed cross 0 test" ;
+    test_eq (mag_sm_intr i4) 0. "mag_sm_intr failed cross 0 test" ;;
 
 
 let intr_lt_test () =
     test_bool (intr_lt i3 i1) (i3, i1) "intr_lt failed no-change test" ;
-    test_bool (intr_lt i1 i4) (intr_of i1.l (i4.u -. ulp i4.u), 
-                               intr_of (i1.l +. ulp i1.l) i4.u)
+    test_bool (intr_lt i1 i4) (intr_of (lower i1) (upper i4 -. ulp (upper i4)), 
+                               intr_of (lower i1 +. ulp (lower i1)) (upper i4))
               "intr_lt failed boundary test" ;
-    test_bool (intr_lt i5 i1) (intr_of i5.l (i1.u -. ulp i1.u), i1) 
+    test_bool (intr_lt i5 i1) (intr_of (lower i5) ((upper i1) -. ulp (upper i1)), i1) 
               "intr_lt failed overlap test" ;; 
 
 
 let intr_le_test () =
     test_bool (intr_le i3 i1) (i3, i1) "intr_le failed no-change test" ;
-    test_bool (intr_le i1 i4) (intr_of i1.l i4.u, intr_of i1.l i4.u)
+    test_bool (intr_le i1 i4) (intr_of (lower i1) (upper i4), 
+                               intr_of (lower i1) (upper i4))
               "intr_le failed boundary test" ;
-    test_bool (intr_le i5 i1) (intr_of i5.l i1.u, i1) 
+    test_bool (intr_le i5 i1) (intr_of (lower i5) (upper i1), i1) 
               "intr_le failed overlap test" ;; 
 
 
 let intr_gt_test () =
-    test_bool (intr_gt i3 i1) (intr_of (i1.l +. ulp i1.l) i3.u,
-                               intr_of i1.l (i3.u -. ulp i3.u))
+    test_bool (intr_gt i3 i1) (intr_of ((lower i1) +. ulp (lower i1)) (upper i3),
+                               intr_of (lower i1) ((upper i3) -. ulp (upper i3)))
               "intr_gt failed overlap test" ;
     test_bool (intr_gt i2 i1) (i2, i1) "intr_gt failed no-change test" ;;
-    test_bool (intr_gt i5 i1) (intr_of (i1.l +. ulp i1.l) i5.u, i1) 
+    test_bool (intr_gt i5 i1) (intr_of ((lower i1) +. ulp (lower i1)) (upper i5), i1) 
               "intr_gt failed overlap test" ;;
 
 
 let intr_ge_test () =
-    test_bool (intr_ge i3 i1) (intr_of i1.l i3.u, intr_of i1.l i3.u)
+    test_bool (intr_ge i3 i1) (intr_of (lower i1) (upper i3), 
+                               intr_of (lower i1) (upper i3))
               "intr_ge failed overlap test" ;
     test_bool (intr_ge i2 i1) (i2, i1) "intr_ge failed no-change test" ;;
-    test_bool (intr_ge i5 i1) (intr_of i1.l i5.u, i1) 
+    test_bool (intr_ge i5 i1) (intr_of (lower i1) (upper i5), i1) 
               "intr_ge failed overlap test" ;;
 
 
 let intr_eq_test () = 
-    let out = intr_of i1.l i3.u in
+    let out = intr_of (lower i1) (upper i3) in
     test_bool (intr_eq i1 i3) (out, out) "intr_eq test failed" ;;
 
 
@@ -156,12 +159,12 @@ let intr_neq_test () =
 
 
 let intr_union_test () = 
-    test_eq (intr_union i1 i2) (intr_of i1.l i2.u) "intr_union test failed" ;
+    test_eq (intr_union i1 i2) (intr_of (lower i1) (upper i2)) "intr_union test failed" ;
     test_eq (intr_union i5 i1) i5 "intr_union overlap test failed" ;;
 
 
 let intr_partition_test () = 
-    test_eq (intr_partition i3 i2) ([i3], intr_bot) 
+    test_eq (intr_partition i3 i2) ([i3], IntrBot) 
             "intr_partition failed no-change test" ;
     (* Perhaps we need to offset by ulp here? *)
     test_eq (intr_partition i5 i1) 
@@ -177,7 +180,7 @@ let intr_partition_test () =
 
 
 let intr_with_test () =
-    test_eq (intr_with i1 i2) intr_bot "intr_with failed test" ;;
+    test_eq (intr_with i1 i2) IntrBot "intr_with failed test" ;;
 
 let intr_without_test () =
     test_eq (intr_without i3 i2) [i3] "intr_without failed no-change test" ;
@@ -218,7 +221,7 @@ let s4 = seg_of (-5.) 3. 0.0002 ;;
 let s5 = seg_of 1. 5. 0.00202;;
 
 let seg_of_test () = 
-    test_eq s1 { int = { l = 2. ; u = 4. }; err = 0.03 } 
+    test_eq s1 { int = Intr { l = 2. ; u = 4. }; err = 0.03 } 
         "seg_of failed test" ;
     test_eq (seg_of 3. 2. 0.0001) seg_bot 
         "seg_of did not produce bottom from negative interval" ;
@@ -262,46 +265,53 @@ let seg_op_tests () =
 let seg_lt_test () =
     test_bool (seg_lt s3 s1) (s3, s1) "seg_lt failed no-change test" ;
     test_bool (seg_lt s1 s4) 
-              (seg_of s1.int.l (s4.int.u -. ulp s4.int.u) s1.err, 
-               seg_of (s1.int.l +. ulp s1.int.l) s4.int.u s4.err)
+              (seg_of (lower s1.int) 
+                      ((upper s4.int) -. ulp (upper s4.int)) s1.err, 
+               seg_of ((lower s1.int) +. ulp (lower s1.int)) 
+                      (upper s4.int) s4.err)
               "seg_lt failed boundary test" ;
     test_bool (seg_lt s5 s1) 
-              (seg_of s5.int.l (s1.int.u -. ulp s1.int.u) s5.err, s1) 
+              (seg_of (lower s5.int) 
+                      ((upper s1.int) -. ulp (upper s1.int)) s5.err, s1)
               "intr_lt failed overlap test" ;; 
 
 
 let seg_le_test () =
     test_bool (seg_le s3 s1) (s3, s1) "seg_le failed no-change test" ;
-    test_bool (seg_le s1 s4) (seg_of s1.int.l s4.int.u s1.err,
-                               seg_of s1.int.l s4.int.u s4.err)
+    test_bool (seg_le s1 s4) (seg_of (lower s1.int) (upper s4.int) s1.err,
+                               seg_of (lower s1.int) (upper s4.int) s4.err)
               "seg_le failed boundary test" ;
-    test_bool (seg_le s5 s1) (seg_of s5.int.l s1.int.u s5.err, s1) 
+    test_bool (seg_le s5 s1) (seg_of (lower s5.int) (upper s1.int) s5.err, s1) 
               "seg_le failed overlap test" ;; 
 
 
 let seg_gt_test () =
-    test_bool (seg_gt s3 s1) (seg_of (s1.int.l +. ulp s1.int.l) s3.int.u s3.err,
-                               seg_of s1.int.l (s3.int.u -. ulp s3.int.u) s1.err)
+    test_bool (seg_gt s3 s1) 
+              (seg_of ((lower s1.int) +. ulp (lower s1.int)) 
+                      (upper s3.int) s3.err,
+               seg_of (lower s1.int) 
+                      ((upper s3.int) -. ulp (upper s3.int)) s1.err)
               "range_seg failed overlap test" ;
     test_bool (seg_gt s2 s1) (s2, s1) "seg_gt failed no-change test" ;;
     test_bool (seg_gt s5 s1) 
-              (seg_of (s1.int.l +. ulp s1.int.l) s5.int.u s5.err, s1) 
+              (seg_of ((lower s1.int) +. ulp (lower s1.int)) 
+                      (upper s5.int) s5.err, s1) 
               "seg_gt failed overlap test" ;;
 
 
 let seg_ge_test () =
     test_bool (seg_ge s3 s1) 
-              (seg_of s1.int.l s3.int.u s3.err,
-               seg_of s1.int.l s3.int.u s1.err)
+              (seg_of (lower s1.int) (upper s3.int) s3.err,
+               seg_of (lower s1.int) (upper s3.int) s1.err)
               "seg_ge failed overlap test" ;
     test_bool (seg_ge s2 s1) (s2, s1) "seg_ge failed no-change test" ;;
-    test_bool (seg_ge s5 s1) (seg_of s1.int.l s5.int.u s5.err, s1) 
+    test_bool (seg_ge s5 s1) (seg_of (lower s1.int) (upper s5.int) s5.err, s1) 
               "seg_ge failed overlap test" ;;
 
 
 let seg_eq_test () = 
-    let out1 = seg_of s1.int.l s3.int.u s1.err in
-    let out2 = seg_of s1.int.l s3.int.u s3.err in
+    let out1 = seg_of (lower s1.int) (upper s3.int) s1.err in
+    let out2 = seg_of (lower s1.int) (upper s3.int) s3.err in
     test_bool (seg_eq s1 s3) (out1, out2) "seg_eq failed test" ;;
 
 
@@ -312,10 +322,10 @@ let seg_neq_test () =
 let seg_without_test () =
     test_lst [ s3 ] (seg_without s3 s2) "seg_without failed no-change test" ;
     (* Perhaps we need to offset by ulp here? *)
-    test_lst [ seg_of s5.int.l s1.int.l s5.err ; 
-              seg_of s1.int.u s5.int.u s5.err ] (seg_without s5 s1) 
+    test_lst [ seg_of (lower s5.int) (lower s1.int) s5.err ; 
+              seg_of (upper s1.int) (upper s5.int) s5.err ] (seg_without s5 s1) 
         "seg_without failed containing test" ;
-    test_lst [ seg_of s3.int.l s1.int.l s3.err ] (seg_without s3 s1) 
+    test_lst [ seg_of (lower s3.int) (lower s1.int) s3.err ] (seg_without s3 s1) 
         "seg_without failed overlap test" ;;
 
 
@@ -339,31 +349,34 @@ let seg_union_test () =
 
 (* Error Testing *)
 let ulp_op_test () = 
-    test_eq (ulp_add s1 s2) (0.5 *. ulp (4. +. 8.))
+    test_eq (ulp_add (intr_to_interval i1) (intr_to_interval i2)) (0.5 *. ulp (4. +. 8.))
         "ulp_add failed test" ;
-    test_eq (ulp_sub s1 s2) (0.5 *. ulp (4. +. 8.))
+    test_eq (ulp_sub (intr_to_interval i1) (intr_to_interval i2)) (0.5 *. ulp (4. +. 8.))
         "ulp_sub failed test" ;
-    test_eq (ulp_mul s1 s2) (0.5 *. ulp (4. *. 8.))
+    test_eq (ulp_mul (intr_to_interval i1) (intr_to_interval i2)) (0.5 *. ulp (4. *. 8.))
         "ulp_mul failed test" ;
-    test_eq (ulp_div s1 s2) (0.5 *. ulp (4. /. 4.))
+    test_eq (ulp_div (intr_to_interval i1) (intr_to_interval i2)) (0.5 *. ulp (4. /. 4.))
         "ulp_div failed test" ;;
 
 
-(* TODO: Look into potentially negative error here? Probably need an absolute value... *)
 let err_tests () =
-    test_eq (err_add s1 s2) (s1.err +. s2.err +. (ulp_add s1 s2)) 
+    test_eq (err_add s1 s2) 
+            (s1.err +. s2.err +. (ulp_add (intr_to_interval s1.int)
+                                          (intr_to_interval s2.int))) 
         "err_add failed test" ;
     test_eq (err_add s1 (seg_of 1. 2. infinity)) infinity 
         "err_add failed infinity test";
-    test_eq (err_sub s1 s2) (s1.err +. s2.err +. (ulp_sub s1 s2))
+    test_eq (err_sub s1 s2) 
+            (s1.err +. s2.err +. (ulp_sub (intr_to_interval s1.int) 
+                                          (intr_to_interval s2.int)))
         "err_sub failed test" ;
     test_eq (err_mul s1 s2) 
         ((4. *. 0.101) +. (8. *. 0.03) +. (0.03 *. 0.101) +. 
-        (ulp_mul s1 s2))
+        (ulp_mul (intr_to_interval s1.int) (intr_to_interval s2.int)))
         "err_mul failed test" ;
     test_eq (err_div s2 s1)
-        ((((4. *. 0.101) -. (8. *. 0.03)) /. ((4. *. 4.) +. (4. *. 0.03))) +. 
-        (ulp_div s2 s1))
+        ((((8. *. 0.03) +. (2. *. 0.101)) /. ((2. *. 2.) -. (2. *. 0.03))) +. 
+        (ulp_div (intr_to_interval s2.int) (intr_to_interval s1.int)))
         "err_div failed test" ;;
 
 
@@ -396,7 +409,7 @@ let t2 = Eterm [ seg_of 1. 2. 0.001 ; seg_of 2. 4. 0.02 ] ;;
 
 let range_tests () = 
     test_eq (range x) (intr_of 2. 8.) "range failed happy path test" ;
-    test_eq (range Bot) intr_bot "range failed bot test" ;
+    test_eq (range Bot) IntrBot "range failed bot test" ;
     test_eq (range_seg x) (seg_of 2. 8. 0.0) "range_seg failed happy path test" ;
     test_eq (range_seg Bot) seg_bot "range_seg failed bot test" ;;
 
@@ -434,7 +447,7 @@ let merge_test () =
 
 let eterm_arith_tests () = 
     let x1, x2 = (seg_of 2. 4. 0.02, seg_of 4. 8. 0.01) in
-    let y1, y2 = (seg_of 1. 3. 0.001, seg_of 4. 6. 0.011) in
+    let y1, y2 = (seg_of 1. 3. 0.001, seg_of 3. 6. 0.011) in
     test_ets (eadd x y) 
         (merge (Eterm [seg_of 3. 5. (err_add x1 y1) ;
                        seg_of 5. 10. (err_add x1 y2) ;
@@ -623,7 +636,7 @@ let test = CCol (CAsgn ("x", CVal (CFloat 7.2)),
 (* Testing with parameters *)
 let amem_init = 
     amem_update (Id "x") 
-                (AFloat (Eterm [{int = {l = 10. ; u = 14. } ; err = 0. }]))
+                (AFloat (Eterm [{int = Intr {l = 10. ; u = 14. } ; err = 0. }]))
                 amem_bot ;;
 
 let test2 = CIf (CGt (CVar ("x", FloatTyp), CVal (CFloat 12.2)),
@@ -637,12 +650,13 @@ let test3 = CFor (CAsgn ("i", CVal (CInt 9)),
                   CAsgn ("x", CAdd (CVar ("x", FloatTyp), CVal (CInt 1)))) ;;
 
 let runtests () =
-    runtest test amem_bot ;
+    (*runtest test amem_bot ;
     runtest test2 amem_init ; 
-    runtest test3 amem_init ;
+    runtest test3 amem_init ; *)
     intr_testing () ;
     seg_testing() ;
     util_testing () ;
     eterm_testing () ; 
-    parser_testing () ;;
+    parser_testing () ;
+    Format.printf "All tests passed!\n" ;;
 

@@ -33,7 +33,7 @@ let parse_seg (str : string) =
     let no_parens = global_replace (regexp "[()]") "" str in
     let split = filter notempty (split_on_char ',' no_parens) in
     let intr = parse_intr (nth split 0) in
-    seg_of intr.l intr.u (Float.of_string (nth split 1)) ;;
+    seg_of_intr intr (Float.of_string (nth split 1)) ;;
 
 let parse_eterm (str : string) = 
     let no_braces = global_replace (regexp "[{}]") "" str in

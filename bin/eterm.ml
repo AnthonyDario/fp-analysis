@@ -14,14 +14,14 @@ let eterm_of l u e = Eterm [seg_of l u e] ;;
 (* Get the range of the eterm as an interval *)
 let range et = 
     match et with
-    | Eterm segs -> { l = min_flt (map (fun seg -> seg.int.l) segs) ;
-                      u = max_flt (map (fun seg -> seg.int.u) segs) }
-    | Bot        -> intr_bot ;;
+    | Eterm segs -> Intr { l = min_flt (map (fun seg -> lower seg.int) segs) ;
+                           u = max_flt (map (fun seg -> upper seg.int) segs) }
+    | Bot        -> IntrBot ;;
 
 (* Utility to get the range as a segment datatype *)
 let range_seg (et : eterm) : segment = 
     let intr = range et in
-    seg_of intr.l intr.u 0.0 ;;
+    seg_of_intr intr 0.0 ;;
 
 let get_segs et = 
     match et with
@@ -39,7 +39,10 @@ let eterm_append (et : eterm) (segs : segment list) =
 
 (* Convert to and from an integer interval for casting purposes *)
 let eterm_to_iintr et = intr_to_iintr (range et) ;;
-let iintr_to_eterm ii = Eterm [seg_of (Float.of_int ii.low) (Float.of_int ii.up) 0.0] ;;
+let iintr_to_eterm (ii : int intr) = 
+    match ii with
+    | Intr i -> Eterm [seg_of (Float.of_int i.l) (Float.of_int i.u) 0.0]
+    | _ -> Bot ;;
 
 
 (* Arithmetic operators *)
@@ -65,13 +68,17 @@ let ediv le re = eop le re seg_div ;;
 
 (* Boolean operators *)
 (* Chops based upen segment comparison function passed in *)
-let chop eterm range comp =
-    match eterm with
-    | Eterm segs ->
-          let dummy = seg_of range.l range.u 0.0 in
-          Eterm (filter (fun x -> x != seg_bot) 
-                        (map (fun x -> fst (comp x dummy)) segs))
-    | Bot -> Bot ;;
+let chop (eterm : eterm) (range : float intr) 
+         (comp : segment -> segment -> (segment * segment)) : eterm =
+    match range with
+    | Intr r ->
+        (match eterm with
+         | Eterm segs ->
+               let dummy = seg_of_intr range 0.0 in
+               Eterm (filter (fun x -> x != seg_bot) 
+                             (map (fun x -> fst (comp x dummy)) segs))
+         | Bot -> Bot ) 
+    | _ -> Bot ;;
 
 let eterm_lt l r = (chop l (range r) seg_lt, chop r (range l) seg_gt) ;;
 let eterm_le l r = (chop l (range r) seg_le, chop r (range l) seg_ge) ;;
