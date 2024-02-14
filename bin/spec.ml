@@ -2,8 +2,8 @@
  * The file gives a variable and its range of values on a new line
  * Example:
  *
- * x = [ -0.1 ; 9.3 ]
- * y = [ -8.2 ; -1.2]
+ * x = {[ -0.1 ; 9.3 ], 0.01}
+ * y = {[ -8.2 ; -1.2], 0.0002}
  *)
 
 open In_channel

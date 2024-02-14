@@ -44,24 +44,28 @@ let rec str_cstmt stmt =
     ;;
 
 (* Abstract Domain *)
-let str_interval intr =
+let str_interval i = 
+    "[" ^ Format.sprintf "%f" i.l ^ 
+    " ; " ^ Format.sprintf "%f" i.u ^ "]" ;;
+
+let str_intr intr =
     match intr with
-    | Intr i ->
-        "[" ^ Format.sprintf "%f" i.l ^ 
-        " ; " ^ Format.sprintf "%f" i.u ^ "]"
+    | Intr i -> str_interval i
     | IntrErr -> "IntrErr"
     | IntrBot -> "_|_" ;;
 
-let str_iInterval intr =
-    match intr with
-    | Intr i ->
+let str_iInterval i =
         "[" ^ Int.to_string i.l ^ 
         " ; " ^ Int.to_string i.u ^ "]"
+
+let str_iIntr intr =
+    match intr with
+    | Intr i -> str_iInterval i
     | IntrErr -> "IntrErr"
     | IntrBot -> "_|_" ;;
 
 let str_seg ie =
-    "(" ^ str_interval ie.int ^ ", " ^ Format.sprintf "%f" ie.err ^ ")" ;;
+    "(" ^ str_intr ie.int ^ ", " ^ Format.sprintf "%20.30f" ie.err ^ ")" ;;
 
 let str_segs segs =
     (fold_left (fun acc s -> acc ^ s ^ ", ") "{" (map str_seg segs)) ^ "}"
@@ -78,7 +82,7 @@ let str_id (id : id) =
 
 let str_aval v =
     match v with
-    | AInt i -> str_iInterval i
+    | AInt i -> str_iIntr i
     | AFloat Bot -> "_|_"
     | AFloat trm -> str_eterm trm ;;
 
@@ -114,7 +118,7 @@ let rec str_astmt stmt =
 
 let str_avar n amem = 
     match amem.lookup n with
-    | Some (AInt ii) -> n ^ " -> " ^ str_iInterval ii
+    | Some (AInt ii) -> n ^ " -> " ^ str_iIntr ii
     | Some (AFloat et) -> n ^ " -> " ^ str_eterm et
     | None -> n ^ " -> _" ;;
 
