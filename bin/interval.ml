@@ -68,6 +68,69 @@ let intr_to_interval intr =
     | Intr i -> i
     | _ -> failwith "Attempting to extract interval from error intr" ;; 
 
+(* Largest and smallest constraint by magnitude *)
+let mag_lg (i: float interval) : float = max_flt [(abs i.l) ; (abs i.u)] ;;
+let mag_lg_intr (intr : float intr) : float =
+    match intr with
+    | Intr i -> mag_lg i
+    | _ -> nan ;;
+
+(* If we cross 0 then 0, else whichever one is closer to 0 *)
+let mag_sm i = 
+    if i.l < 0. && i.u > 0.
+    then 0.
+    else min_flt [(abs i.l) ; (abs i.u)] ;;
+
+let mag_sm_intr (intr : float intr) : float =
+    match intr with
+    | Intr i -> mag_sm i
+    | _ -> nan ;;
+
+let ulp_intr (i : float intr) = ulp (mag_lg_intr i) ;;
+
+(* Get the floating point value of the upper bound of binade defined by
+ * exponent exp *)
+let exp_to_binade (exp : int) : float = pow 2. (Float.of_int exp) ;;
+
+
+(* Split an interval on each binade with the lower bound being 1 ulp above the
+ * previous binade *)
+
+let split_binade_pos (i : float interval) : float intr list =
+    let (_, el) = frexp i.l in (* the smallest exponent *)
+    let (_, eu) = frexp i.u in (* the largest exponent *)
+    let init_intr = intr_of i.l (pred (exp_to_binade el)) in
+    let final_intr = intr_of (exp_to_binade (eu - 1)) i.u in
+    let middle_intrs = 
+        List.init (Int.abs (eu - el - 1))
+                  (fun x -> intr_of (exp_to_binade (x + el))
+                                    (pred (exp_to_binade (x + 1 + el)))) in
+        init_intr :: middle_intrs @ [final_intr] ;;
+
+
+let split_binade_neg (i : float interval) : float intr list =
+    let (_, el) = frexp i.l in (* the smallest exponent *)
+    let (_, eu) = frexp i.u in (* the largest exponent *)
+    let init_intr = intr_of i.l (-.(exp_to_binade (el - 1))) in
+    let final_intr = intr_of (succ (-.(exp_to_binade eu))) i.u in
+    let middle_intrs = 
+        List.init (Int.abs ((-(el + eu)) - 1))
+                  (fun x -> intr_of (succ (-.(exp_to_binade (el - x - 1))))
+                                    (-.(exp_to_binade (el - x - 2)))) in
+    init_intr :: middle_intrs @ [final_intr] ;;
+
+
+let split_binade (intr : float intr) : float intr list =
+    match intr with
+    | Intr i -> 
+        if snd (frexp i.l) = snd (frexp i.u) then [intr] else 
+        if i.l >= 0. then split_binade_pos i else 
+        if i.u <= 0. then split_binade_neg i else
+        split_binade_neg { l = i.l ; u = (pred 0.) } @
+        [ intr_of 0. 0. ] @
+        split_binade_pos { l = (succ 0.) ; u = i.u }
+    | _ -> [intr] ;;
+
 
 (* Arithmetic operators *)
 (* -------------------------- *)
@@ -118,24 +181,6 @@ let intr_sub l r = intr_op l r intr_sub_op ;;
 let intr_mul l r = intr_op l r intr_mul_op ;; 
 let intr_div l r = intr_op l r intr_div_op ;; 
 
-
-(* Largest and smallest constraint by magnitude *)
-let mag_lg (i: float interval) : float = max_flt [(abs i.l) ; (abs i.u)] ;;
-let mag_lg_intr (intr : float intr) : float =
-    match intr with
-    | Intr i -> mag_lg i
-    | _ -> nan ;;
-
-(* If we cross 0 then 0, else whichever one is closer to 0 *)
-let mag_sm i = 
-    if i.l < 0. && i.u > 0.
-    then 0.
-    else min_flt [(abs i.l) ; (abs i.u)] ;;
-
-let mag_sm_intr (intr : float intr) : float =
-    match intr with
-    | Intr i -> mag_sm i
-    | _ -> nan ;;
 
 (* Boolean Operators *)
 (* -------------------------- *)

@@ -54,9 +54,12 @@ let str_intr intr =
     | IntrErr -> "IntrErr"
     | IntrBot -> "_|_" ;;
 
+let str_intrs is =
+    fold_left (fun acc i -> acc ^ str_intr i ^ ", ") "{" is ^ "}" ;;
+
 let str_iInterval i =
         "[" ^ Int.to_string i.l ^ 
-        " ; " ^ Int.to_string i.u ^ "]"
+        " ; " ^ Int.to_string i.u ^ "]" ;;
 
 let str_iIntr intr =
     match intr with
@@ -68,7 +71,7 @@ let str_seg ie =
     "(" ^ str_intr ie.int ^ ", " ^ Format.sprintf "%20.30f" ie.err ^ ")" ;;
 
 let str_segs segs =
-    (fold_left (fun acc s -> acc ^ s ^ ", ") "{" (map str_seg segs)) ^ "}"
+    fold_left (fun acc s -> acc ^ str_seg s ^ ", ") "{" segs ^ "}" ;;
 
 let str_eterm trm = 
     match trm with

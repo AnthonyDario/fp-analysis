@@ -112,6 +112,35 @@ let intr_mags_test () =
     test_eq (mag_sm_intr (intr_of (-5.) (-2.))) 2. "mag_sm_intr failed cross 0 test" ;
     test_eq (mag_sm_intr i4) 0. "mag_sm_intr failed cross 0 test" ;;
 
+let intr_split_binade_test () =
+    test_lst (split_binade (intr_of 0.4 9.)) 
+             [intr_of 0.4 (pred 0.5); intr_of 0.5 (pred 1.) ;
+              intr_of 1. (pred 2.) ; intr_of 2. (pred 4.) ;
+              intr_of 4. (pred 8.) ; intr_of 8. 9. ]
+             "split_binade failed happy path test" ;
+    test_lst (split_binade (intr_of 0.4 8.)) 
+             [intr_of 0.4 (pred 0.5); intr_of 0.5 (pred 1.) ;
+              intr_of 1. (pred 2.) ; intr_of 2. (pred 4.) ;
+              intr_of 4. (pred 8.) ; intr_of 8. 8. ]
+             "split_binade failed edge test" ;
+    test_lst (split_binade (intr_of 0.124 2.)) 
+             [intr_of 0.124 (pred 0.125); intr_of 0.125 (pred 0.25) ;
+              intr_of 0.25 (pred 0.5) ; intr_of 0.5 (pred 1.0) ;
+              intr_of 1.0 (pred 2.) ; intr_of 2. 2. ]
+             "split_binade failed negative exponents test" ;
+    test_lst (split_binade (intr_of (-4.) (-0.4)))
+             [intr_of (-4.) (-4.) ; intr_of (succ (-4.)) (-2.) ; 
+              intr_of (succ (-2.)) (-1.) ; intr_of (succ (-1.)) (-0.5) ;
+              intr_of (succ (-0.5)) (-0.4) ]
+             "split_binade failed negative values test" ;
+    test_lst (split_binade (intr_of (-2.1) (1.9))) 
+             ((split_binade (intr_of (-2.1) (pred 0.))) @ 
+              [intr_of 0. 0.] @
+              (split_binade (intr_of (succ 0.) 1.9)))
+             "split_binade failed crossing 0 test" ;
+    test_lst (split_binade (intr_of 3. 3.5)) 
+             [intr_of 3. 3.5]
+             "split_binade failed one-binade test" ;;
 
 let intr_lt_test () =
     test_bool (intr_lt i3 i1) (i3, i1) "intr_lt failed no-change test" ;
@@ -200,6 +229,7 @@ let intr_testing () =
     intr_overlap_test () ;
     intr_ops_test () ;
     intr_mags_test () ;
+    intr_split_binade_test () ;
     intr_lt_test () ;
     intr_le_test () ;
     intr_gt_test () ;
@@ -252,7 +282,12 @@ let seg_get_sterbenz_test () =
     test_eq (get_sterbenz_seg s1) (seg_of 2. 4. 0.03) "get_sterbenz_seg failed test" ;;
 
 let seg_op_tests () =
-    test_lst (seg_add s1 s2) [(seg_of 6. 12. (err_add s1 s2))]
+    let t1 = seg_add s1 s2 in
+    let t2 = seg_sub s1 s2 in
+    let t3 = seg_mul s1 s2 in
+    let t4 = seg_div s2 s1 in
+    test_lst t1 [seg_of 6. (Float.pred 8.) (err_add s1 s2 (intr_of 6. (Float.pred 8.))) ;
+                 seg_of 8. 12. (err_add s1 s2 (intr_of 8. 12.))]
         "seg_add failed" ;
     test_lst (seg_sub s1 s2) [(seg_of (-6.) 0. (err_sub s1 s2))]
         "seg_sub failed" ;

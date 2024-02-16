@@ -59,12 +59,10 @@ let seg_partition (s1 : segment) (s2 : segment)
     (seg_without s1 s2, seg_with s1 s2) ;;
 
 (* Dealing with error *)
-let ulp_add l r = 0.5 *. ulp ((abs l.u) +. (abs r.u)) ;;
-let ulp_sub l r = 0.5 *. ulp ((mag_lg l) +. (mag_lg r)) ;;
-let ulp_mul l r = 
-    0.5 *. ulp ((mag_lg l) *. (mag_lg r)) ;;
-let ulp_div l r = 
-    0.5 *. ulp ((mag_lg l) /. (mag_sm r)) ;;
+let ulp_add l r = ulp_intr (intr_add_op l r) ;;
+let ulp_sub l r = ulp_intr (intr_sub_op l r) ;;
+let ulp_mul l r = ulp_intr (intr_mul_op l r) ;;
+let ulp_div l r = ulp_intr (intr_div_op l r) ;;
 
 let ulp_op (l : segment) (r : segment) 
            (op : float interval -> float interval -> float) = 
@@ -72,31 +70,28 @@ let ulp_op (l : segment) (r : segment)
     | Intr li, Intr ri -> op li ri
     | IntrBot, _ | _, IntrBot | IntrErr, _ | _, IntrErr-> nan ;;
 
-let err_add l r = 
-    match l.err, r.err with
-    | le, re when not (is_finite le) || not (is_finite re) -> infinity
-    | le, re -> le +. re +. ulp_op l r ulp_add ;;
+(* For these error functions, o is the result of the interval operation on l
+ * and r *)
 
-let err_sub l r = l.err +. r.err +. ulp_op l r ulp_sub ;;
+let err_add (l : segment) (r : segment) (o : float intr) = 
+    l.err +. r.err +. (ulp_intr o) ;;
 
-let err_sbenz l r = l.err +. r.err ;;
+let err_sub (l : segment) (r : segment) (o : float intr) = 
+    l.err +. r.err +. (ulp_intr o) ;;
 
-let err_mul l r =
+let err_sbenz (l : segment) (r : segment) (_ : float intr) = 
+    l.err +. r.err ;;
+
+let err_mul (l : segment) (r : segment) (o : float intr) =
     let lup = mag_lg_intr l.int in
     let rup = mag_lg_intr r.int in
-    lup *. r.err +. rup *. l.err +. l.err *. r.err +. ulp_op l r ulp_mul ;;
+    lup *. r.err +. rup *. l.err +. l.err *. r.err +. (ulp_intr o) ;;
 
-let err_div l r =
+let err_div (l : segment) (r : segment) (o : float intr) =
     let lup = mag_lg_intr l.int in
     let rdn = mag_sm_intr r.int in
     ((lup *. r.err +. rdn *. l.err) /. (rdn *. rdn -. rdn *. r.err)) +.  
-        (ulp_op l r ulp_div) ;;
-        (*
-    let prop = ((lup *. r.err +. rdn *. l.err) /. (rdn *. rdn -. rdn *. r.err)) in 
-    let round = ulp_op l r ulp_div in 
-    Format.printf "err_div:\n\tlup: %f\n\trup: %f\n\tlerr: %f\n\trerr: %f\n\t%f + %f\n" lup rup l.err r.err prop round ;
-    prop +. round ;;
-    *)
+        (ulp_intr o) ;;
 
 (* Sterbenz Lemma *)
 (* ---------------------- *)
@@ -106,37 +101,66 @@ let get_sterbenz_seg (seg : segment) : segment =
     let sbenz = get_sterbenz_intr seg.int in
     seg_of_intr sbenz seg.err ;;
 
+(* TODO: DELETE ME!!!!!!!!! *)
+let str_interval i = 
+    "[" ^ Format.sprintf "%f" i.l ^ 
+    " ; " ^ Format.sprintf "%f" i.u ^ "]" ;;
+
+let str_intr intr =
+    match intr with
+    | Intr i -> str_interval i
+    | IntrErr -> "IntrErr"
+    | IntrBot -> "_|_" ;;
+
+let str_intrs segs =
+    (fold_left (fun acc s -> acc ^ s ^ ", ") "{" (map str_intr segs)) ^ "}"
+
+let str_seg ie =
+    "(" ^ str_intr ie.int ^ ", " ^ Format.sprintf "%20.30f" ie.err ^ ")" ;;
+
+let str_segs segs =
+    (fold_left (fun acc s -> acc ^ s ^ ", ") "{" (map str_seg segs)) ^ "}"
+
 (* Arithmetic operators *)
 (* ---------------------- *)
 let seg_op (x : segment) (y : segment) 
            (intr_op : float intr -> float intr -> float intr)
-           (err_op : segment -> segment -> float) 
-           : segment =
-    { int = intr_op x.int y.int ; err = err_op x y } ;;
+           (err_op : segment -> segment -> float intr -> float) 
+           : segment list =
+    Format.printf "seg_op: %s, %s\n\n" (str_seg x) (str_seg y) ;
+    let split_result = split_binade (intr_op x.int y.int) in
+    Format.printf "split binade into: %s" (str_intrs split_result) ;
+    map (fun i -> { int = i ; err = err_op x y i }) split_result ;;
     
 
 let seg_add (x : segment) (y : segment) : segment list =
-    [seg_op x y intr_add err_add] ;;
+    seg_op x y intr_add err_add ;;
 
 (* No special cases *)
-let seg_sub_reg (x : segment) (y : segment) : segment =
+let seg_sub_reg (x : segment) (y : segment) : segment list =
+    Format.printf "SEG_SUB_REG: %s - %s\n\n\n" (str_seg x) (str_seg y) ;
     seg_op x y intr_sub err_sub ;;
 
 (* Sterbenz *)
-let seg_sub_sbenz (x : segment) (y : segment) : segment =
+let seg_sub_sbenz (x : segment) (y : segment) : segment list =
+    Format.printf "seg_sub_sbenz: %s - %s\n" (str_seg x) (str_seg y) ;
     seg_op x y intr_sub err_sbenz ;;
 
 let seg_sub (x : segment) (y : segment) : segment list = 
+    Format.printf "seg_sub: %s - %s\n" (str_seg x) (str_seg y) ;
     let reg, sbenz = (seg_partition y (get_sterbenz_seg x)) in
-    if sbenz = seg_bot 
-    then map (seg_sub_reg x) reg  
-    else seg_sub_sbenz x sbenz :: map (seg_sub_reg x) reg ;;
+    Format.printf "\treg: %s\n\tsbenz: %s\n\n" (str_segs reg) (str_seg sbenz) ;
+    let z = 
+        if sbenz = seg_bot 
+        then concat_map (seg_sub_reg x) reg  
+        else seg_sub_sbenz x sbenz @ concat_map (seg_sub_reg x) reg 
+    in Format.printf "END OF SEG_SUB\n\n" ; z
 
 let seg_mul (x : segment) (y : segment) : segment list = 
-    [seg_op x y intr_mul err_mul] ;;
+    seg_op x y intr_mul err_mul ;;
 
 let seg_div (x : segment) (y : segment) : segment list = 
-    [seg_op x y intr_div err_div] ;;
+    seg_op x y intr_div err_div ;;
 
 
 (* Boolean operators *)
