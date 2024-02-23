@@ -97,39 +97,55 @@ let exp_to_binade (exp : int) : float = pow 2. (Float.of_int exp) ;;
  * previous binade *)
 
 let split_binade_pos (i : float interval) : float intr list =
-    let (_, el) = frexp i.l in (* the smallest exponent *)
-    let (_, eu) = frexp i.u in (* the largest exponent *)
+    let (_, el) = frexp (Float.max min_float i.l) in (* the smallest exponent *)
+    let (_, eu) = frexp i.u in                       (* the largest exponent *)
     let init_intr = intr_of i.l (pred (exp_to_binade el)) in
     let final_intr = intr_of (exp_to_binade (eu - 1)) i.u in
     let middle_intrs = 
         List.init (Int.abs (eu - el - 1))
                   (fun x -> intr_of (exp_to_binade (x + el))
                                     (pred (exp_to_binade (x + 1 + el)))) in
-        init_intr :: middle_intrs @ [final_intr] ;;
+    (* Format.printf "pos:\neu = %d, el = %d\n\n" eu el ; *)
+    init_intr :: middle_intrs @ [final_intr] ;;
 
 
 let split_binade_neg (i : float interval) : float intr list =
     let (_, el) = frexp i.l in (* the smallest exponent *)
-    let (_, eu) = frexp i.u in (* the largest exponent *)
+    let (_, eu) = frexp (Float.min (-.min_float) i.u) in (* the largest exponent *)
     let init_intr = intr_of i.l (-.(exp_to_binade (el - 1))) in
     let final_intr = intr_of (succ (-.(exp_to_binade eu))) i.u in
     let middle_intrs = 
         List.init (Int.abs ((-(el + eu)) - 1))
                   (fun x -> intr_of (succ (-.(exp_to_binade (el - x - 1))))
                                     (-.(exp_to_binade (el - x - 2)))) in
+    (* Format.printf "neg:\neu = %d, el = %d\n\n" eu el ; *)
     init_intr :: middle_intrs @ [final_intr] ;;
 
 
 let split_binade (intr : float intr) : float intr list =
+    (* Format.printf "split_binade\n" ; *)
     match intr with
     | Intr i -> 
-        if snd (frexp i.l) = snd (frexp i.u) then [intr] else 
-        if i.l >= 0. then split_binade_pos i else 
-        if i.u <= 0. then split_binade_neg i else
+        if snd (frexp i.l) = snd (frexp i.u) then ((* Format.printf "i.l = i.u\n" ; *) [intr]) else 
+        if i.l = 0. then (
+            (* (Format.printf "i.l = 0\n" ; *)
+            split_binade_pos {l = succ 0. ; u = i.u}) else
+        if i.u = 0. then (
+            (* (Format.printf "i.u = 0\n" ; *)
+            split_binade_neg {l = i.l ; u = pred 0.}) else
+        if i.l > 0. then (
+            (* (Format.printf "i.l > 0\n" ; *)
+            split_binade_pos i) else 
+        if i.u < 0. then (
+            (* (Format.printf "i.u < 0\n" ; *)
+            split_binade_neg i) else (
+        (* (Format.printf "crossing 0\n" ; *)
         split_binade_neg { l = i.l ; u = (pred 0.) } @
         [ intr_of 0. 0. ] @
-        split_binade_pos { l = (succ 0.) ; u = i.u }
-    | _ -> [intr] ;;
+        split_binade_pos { l = (succ 0.) ; u = i.u })
+    | _ -> (
+        (* (Format.printf "not Intr i\n" ; *)
+        [intr]) ;;
 
 
 (* Arithmetic operators *)
@@ -286,7 +302,7 @@ let intr_union (intr1 : float intr) (intr2 : float intr) : float intr=
     | IntrBot, _ | _, IntrBot -> IntrBot ;;
 
 (* Gets the sections of i1 that don't overlap with i2 *)
-let intr_without (intr1 : float intr) (intr2 : float intr) : 'a intr list = 
+let intr_without (intr1 : float intr) (intr2 : float intr) : float intr list = 
     match intr1, intr2 with
     | Intr i1, Intr i2 ->
         filter (fun x -> x != IntrBot)
@@ -296,6 +312,10 @@ let intr_without (intr1 : float intr) (intr2 : float intr) : 'a intr list =
     | IntrErr, _ -> [IntrErr]
     | IntrBot, _ -> [IntrBot]
     | _, IntrErr | _, IntrBot -> [intr1] ;;
+
+(* section of i1 without any of is *)
+let intr_withouts (i1 : float intr) (is : float intr list) : float intr list =
+    concat_map (fun i -> intr_without i1 i) is ;;
 
 (* Get the section of i1 that overlap with i2 *)
 let intr_with (intr1 : float intr) (intr2 : float intr) : float intr =

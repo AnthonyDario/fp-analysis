@@ -74,6 +74,7 @@ let rec asem_aexp (exp : aaexp) (mem : amem) =
         | Some v -> (v, Id n)
         | None -> raise (UnassignedVariableException n))
     | AAdd (l, r) -> 
+        Format.printf "AAdd\n" ;
         (aval_op (fst (asem_aexp l mem)) 
                   (fst (asem_aexp r mem)) 
                   iintr_add eadd, Const)

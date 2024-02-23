@@ -30,7 +30,7 @@ let get_segs et =
 
 let eterm_append (et : eterm) (segs : segment list) = 
     match et with
-    | Eterm errs -> Eterm (errs @ segs)
+    | Eterm errs -> Eterm (segs @ errs)
     | Bot -> 
         (match segs with
          | [] -> Bot
@@ -47,24 +47,46 @@ let iintr_to_eterm (ii : int intr) =
 
 (* Arithmetic operators *)
 (* ------------------------- *)
+
+(* find overlapping segments *)
+
+let cnt = ref 0;;
 let merge et = 
+    Format.printf "\neterm merging %d\n" (length (get_segs et)) ;
+    Format.print_flush () ;
     let err_first = sort (fun s1 s2 -> Float.compare s2.err s1.err) (get_segs et) in
+    Format.printf "sorted\n" ; Format.print_flush() ;
+    cnt := 0;
     match err_first with
     | x :: xs ->
-        fold_left (fun acc seg -> eterm_append acc (seg_withouts seg (get_segs acc)))
+        fold_left (fun acc seg -> 
+                    cnt := !cnt + 1;
+                    Format.printf "\rmerged %d/%d" !cnt (length (get_segs et)); Format.print_flush();
+                    eterm_append acc (seg_withouts seg (get_segs acc)
+                    ))
                   (Eterm [x]) xs
     | [] -> Bot ;;
 
 (* eterm -> eterm -> eterm list *)
 let eop le re op =
+    Format.printf "Eop\n\n" ;
     match le, re with
     | Eterm ls, Eterm rs -> merge (Eterm (concat (product_map op ls rs)))
     | _, _ -> Bot ;;
 
-let eadd le re = eop le re seg_add ;;
-let esub le re = eop le re seg_sub ;;
-let emul le re = eop le re seg_mul ;;
-let ediv le re = eop le re seg_div ;;
+let eadd le re = 
+    Format.printf "eadd %d + %d\n" (length (get_segs le)) (length (get_segs re)) ;
+    Format.print_flush ();
+    eop le re seg_add ;;
+let esub le re = 
+    Format.printf "esub\n" ;
+    eop le re seg_sub ;;
+let emul le re = 
+    Format.printf "emul\n" ;
+    eop le re seg_mul ;;
+let ediv le re = 
+    Format.printf"ediv\n" ;
+    eop le re seg_div ;;
 
 (* Boolean operators *)
 (* Chops based upen segment comparison function passed in *)

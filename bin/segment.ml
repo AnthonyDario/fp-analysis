@@ -26,24 +26,30 @@ let seg_of_intr i err =
 
 let seg_overlap s1 s2 = intr_overlap s1.int s2.int ;;
 
+let get_segs_range (segs : segment list) : float intr list =
+    match segs with
+    (* | x :: xs -> fold_left (fun acc s -> intr_union acc s.int) x.int xs *)
+    | x :: xs -> fold_left (fun acc s -> 
+                                map (fun i -> if intr_overlap i s.int then intr_union i s.int else i) acc) [x.int] xs
+    | [] -> [IntrBot] ;;
+
 (* Same as intr without but maintain the error *)
 (* Remove seg2 from seg1 *)
 let seg_without (seg1 : segment) (seg2 : segment) : segment list =
     map (fun i -> seg_of_intr i seg1.err)
         (intr_without seg1.int seg2.int) ;;
 
-
-(* Remove parts of s that overlap with any segment in the list of segs *)
+(*
 let rec segs_withouts (segs1 : segment list) (segs2 : segment list) : segment list =
-    match segs2 with
+    match (filter segs2) with
     | s :: ses -> segs_withouts (segs_without segs1 s) ses
     | [] -> segs1
 and segs_without (segs : segment list) (seg : segment) : segment list =
     fold_left (fun acc s -> seg_without s seg @ acc) [] segs ;;
-
+    *)
 
 let seg_withouts (s1 : segment) (s2 : segment list) : segment list =
-    segs_withouts [s1] s2 ;;
+    map (fun i -> seg_of_intr i s1.err) (intr_withouts s1.int (get_segs_range s2)) ;;
 
 
 (* The portions of s1 that overlap with s2 
@@ -127,39 +133,50 @@ let seg_op (x : segment) (y : segment)
            (intr_op : float intr -> float intr -> float intr)
            (err_op : segment -> segment -> float intr -> float) 
            : segment list =
-    Format.printf "seg_op: %s, %s\n\n" (str_seg x) (str_seg y) ;
+    (* Format.printf "seg_op: %s, %s\n\n" (str_seg x) (str_seg y) ; *)
+    (* Format.printf "seg_op\n" ; Format.print_flush (); *)
     let split_result = split_binade (intr_op x.int y.int) in
-    Format.printf "split binade into: %s" (str_intrs split_result) ;
+    (* Format.printf "split binade into: %d parts\n" (length split_result) ; Format.print_flush() ; *)
     map (fun i -> { int = i ; err = err_op x y i }) split_result ;;
     
 
+let cnt = ref 0;;
+
 let seg_add (x : segment) (y : segment) : segment list =
-    seg_op x y intr_add err_add ;;
+    cnt := !cnt + 1 ;
+    Format.printf "\rseg_add: %d/%d" !cnt 294420 ;
+    Format.print_flush () ;
+    (* failwith "adding" ; *)
+    let i = seg_op x y intr_add err_add in
+    (* Format.printf "seg_add completed\n" ; *)
+    i ;;
 
 (* No special cases *)
 let seg_sub_reg (x : segment) (y : segment) : segment list =
-    Format.printf "SEG_SUB_REG: %s - %s\n\n\n" (str_seg x) (str_seg y) ;
+    (* Format.printf "SEG_SUB_REG: %s - %s\n\n\n" (str_seg x) (str_seg y) ; *)
     seg_op x y intr_sub err_sub ;;
 
 (* Sterbenz *)
 let seg_sub_sbenz (x : segment) (y : segment) : segment list =
-    Format.printf "seg_sub_sbenz: %s - %s\n" (str_seg x) (str_seg y) ;
+    (* Format.printf "seg_sub_sbenz: %s - %s\n" (str_seg x) (str_seg y) ; *)
     seg_op x y intr_sub err_sbenz ;;
 
 let seg_sub (x : segment) (y : segment) : segment list = 
-    Format.printf "seg_sub: %s - %s\n" (str_seg x) (str_seg y) ;
+    Format.printf "seg_sub\n" ;
+    (* Format.printf "seg_sub: %s - %s\n" (str_seg x) (str_seg y) ; *)
     let reg, sbenz = (seg_partition y (get_sterbenz_seg x)) in
-    Format.printf "\treg: %s\n\tsbenz: %s\n\n" (str_segs reg) (str_seg sbenz) ;
-    let z = 
-        if sbenz = seg_bot 
-        then concat_map (seg_sub_reg x) reg  
-        else seg_sub_sbenz x sbenz @ concat_map (seg_sub_reg x) reg 
-    in Format.printf "END OF SEG_SUB\n\n" ; z
+    (* Format.printf "\treg: %s\n\tsbenz: %s\n\n" (str_segs reg) (str_seg sbenz) ; *)
+    if sbenz = seg_bot 
+    then concat_map (seg_sub_reg x) reg  
+    else seg_sub_sbenz x sbenz @ concat_map (seg_sub_reg x) reg 
+    (* in Format.printf "END OF SEG_SUB\n\n" ; z *)
 
 let seg_mul (x : segment) (y : segment) : segment list = 
+    Format.printf "seg_mul\n" ;
     seg_op x y intr_mul err_mul ;;
 
 let seg_div (x : segment) (y : segment) : segment list = 
+    Format.printf "seg_div\n" ;
     seg_op x y intr_div err_div ;;
 
 
