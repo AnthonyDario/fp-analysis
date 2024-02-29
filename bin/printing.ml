@@ -128,3 +128,45 @@ let str_avar n amem =
 let str_amem amem =
     fold_left (fun acc x -> acc ^ "\n" ^ (str_avar x amem))
               "" (SS.elements amem.dom) ;;
+
+(* For CSV output *)
+let csv_interval i = 
+    "[" ^ Format.sprintf "%f" i.l ^ 
+    " ; " ^ Format.sprintf "%f" i.u ^ "]" ;;
+
+let csv_intr intr =
+    match intr with
+    | Intr i -> csv_interval i
+    | IntrErr -> "IntrErr,"
+    | IntrBot -> "_|_" ;;
+
+let csv_iInterval i = Int.to_string i.l ^ "," ^ Int.to_string i.u ^ ",0.0";;
+
+let csv_iIntr intr =
+    match intr with
+    | Intr i -> csv_iInterval i
+    | IntrErr -> "IntrErr,IntrErr,0.0"
+    | IntrBot -> "IntrBot,IntrBot,0.0" ;;
+
+let csv_seg ie =
+    Format.sprintf "%20.30e" (lower ie.int) ^ "," ^
+    Format.sprintf "%20.30e" (upper ie.int) ^ "," ^
+    Format.sprintf "%20.30e" ie.err;;
+
+let csv_segs name segs =
+    fold_left (fun acc s -> acc ^ name ^ ",flt," ^ csv_seg s ^ "\n") "" segs ;;
+
+let csv_eterm name trm = 
+    match trm with
+    | Eterm ies -> csv_segs name ies
+    | Bot       -> name ^ ",flt,Bot,Bot,0.0" ;;
+
+let csv_avar n amem = 
+    match amem.lookup n with
+    | Some (AInt ii) -> n ^ ",int," ^ csv_iIntr ii
+    | Some (AFloat et) -> csv_eterm n et
+    | None -> n ^ " -> _" ;;
+
+let csv_amem amem =
+    fold_left (fun acc x -> acc ^ (csv_avar x amem) ^ "\n")
+              "var,type,low,high,err\n" (SS.elements amem.dom) ;;

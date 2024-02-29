@@ -33,6 +33,7 @@ let get_segs_range (segs : segment list) : float intr list =
                                 map (fun i -> if intr_overlap i s.int then intr_union i s.int else i) acc) [x.int] xs
     | [] -> [IntrBot] ;;
 
+
 (* Same as intr without but maintain the error *)
 (* Remove seg2 from seg1 *)
 let seg_without (seg1 : segment) (seg2 : segment) : segment list =
@@ -51,6 +52,13 @@ and segs_without (segs : segment list) (seg : segment) : segment list =
 let seg_withouts (s1 : segment) (s2 : segment list) : segment list =
     map (fun i -> seg_of_intr i s1.err) (intr_withouts s1.int (get_segs_range s2)) ;;
 
+let seg_withouts_intr (s1 : segment) (is : float intr list) : segment list =
+    map (fun i -> seg_of_intr i s1.err) (intr_withouts s1.int is) ;;
+(*
+    let ret = map (fun i -> seg_of_intr i s1.err) (intr_withouts s1.int is) in
+    Format.printf "\nseg_withouts_intr found %d\n" (length ret) ;
+    ret ;;
+    *)
 
 (* The portions of s1 that overlap with s2 
  * Note that the error of segment1 is maintained here *)
@@ -135,21 +143,15 @@ let seg_op (x : segment) (y : segment)
            : segment list =
     (* Format.printf "seg_op: %s, %s\n\n" (str_seg x) (str_seg y) ; *)
     (* Format.printf "seg_op\n" ; Format.print_flush (); *)
-    let split_result = split_binade (intr_op x.int y.int) in
-    (* Format.printf "split binade into: %d parts\n" (length split_result) ; Format.print_flush() ; *)
+    let op_out = intr_op x.int y.int in
+    (* Format.printf "op_out: %s\n" (str_intr op_out) ; *)
+    let split_result = split_binade op_out in
+    (* Format.printf " split binade into: %d parts\r" (length split_result) ; Format.print_flush() ; *)
     map (fun i -> { int = i ; err = err_op x y i }) split_result ;;
     
 
-let cnt = ref 0;;
-
 let seg_add (x : segment) (y : segment) : segment list =
-    cnt := !cnt + 1 ;
-    Format.printf "\rseg_add: %d/%d" !cnt 294420 ;
-    Format.print_flush () ;
-    (* failwith "adding" ; *)
-    let i = seg_op x y intr_add err_add in
-    (* Format.printf "seg_add completed\n" ; *)
-    i ;;
+    seg_op x y intr_add err_add
 
 (* No special cases *)
 let seg_sub_reg (x : segment) (y : segment) : segment list =
@@ -162,7 +164,7 @@ let seg_sub_sbenz (x : segment) (y : segment) : segment list =
     seg_op x y intr_sub err_sbenz ;;
 
 let seg_sub (x : segment) (y : segment) : segment list = 
-    Format.printf "seg_sub\n" ;
+    (* Format.printf "seg_sub\n" ; *)
     (* Format.printf "seg_sub: %s - %s\n" (str_seg x) (str_seg y) ; *)
     let reg, sbenz = (seg_partition y (get_sterbenz_seg x)) in
     (* Format.printf "\treg: %s\n\tsbenz: %s\n\n" (str_segs reg) (str_seg sbenz) ; *)
@@ -172,11 +174,11 @@ let seg_sub (x : segment) (y : segment) : segment list =
     (* in Format.printf "END OF SEG_SUB\n\n" ; z *)
 
 let seg_mul (x : segment) (y : segment) : segment list = 
-    Format.printf "seg_mul\n" ;
+    (* Format.printf "seg_mul\n" ; *)
     seg_op x y intr_mul err_mul ;;
 
 let seg_div (x : segment) (y : segment) : segment list = 
-    Format.printf "seg_div\n" ;
+    (* Format.printf "seg_div\n" ; *)
     seg_op x y intr_div err_div ;;
 
 

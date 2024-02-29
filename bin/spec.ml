@@ -41,8 +41,8 @@ let parse_eterm (str : string) =
     AFloat (Eterm (map parse_seg seg_strs))
 
 let parse_line (l : string) : (string * aval) = 
-   let split = map trim (split_on_char '=' l) in
-   (nth split 0, (parse_eterm (nth split 1))) ;;
+    let split = map trim (split_on_char '=' l) in
+    (nth split 0, (parse_eterm (nth split 1))) ;;
 
 (* Split the file by lines *)
 (* grab each line and turn it into a value *)

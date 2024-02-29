@@ -5,6 +5,10 @@ double sin_dbl(double x)
     double y = 
         ((x - (((x * x) * x) / 6.0)) + ((((((x * x) * x) * x) * x) / 120.0))) - 
         (((((((x * x) * x) * x) * x) * x) * x) / 5040.0);
+        /*
+    double y = 
+        ((x - (((x * x) * x) / 6.0)) + ((((((x * x) * x) * x) * x) / 120.0)));
+        */
     return y;
 }
 

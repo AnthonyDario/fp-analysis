@@ -174,7 +174,8 @@ let rec transform_stmt s =
     | Return (e, _) -> (
         match e with
         | Some exp -> CRet (transform_aexp exp)
-        | _ -> raise (ParseError "Empty return not supported"))
+        (* | _ -> raise (ParseError "Empty return not supported")) *)
+        | _ -> CRet (CVal (CInt 1)))
     | Loop (body, _,_, _, _) ->
         transform_loop body (hd s.preds)
     | Goto (_,_) ->

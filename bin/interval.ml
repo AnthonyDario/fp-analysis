@@ -39,18 +39,39 @@ let iintr_to_intr (intr : int intr) : float intr =
 
 (* Useful utils *)
 (* -------------------------- *)
+let intr_size i =
+    match i with
+    | Intr i -> Float.abs (i.u -. i.l)
+    | _ -> 0. ;;
+
+let is_valid i =
+    match i with
+    | Intr _ -> true
+    | _ -> false ;;
+
 let contains intr v = 
     match intr with
     | Intr i -> i.l <= v && i.u >= v 
     | _ -> false ;;
 
+let interval_overlap (i1 : 'a interval) (i2 : 'a interval) : bool = 
+    i1.l <= i2.l && i1.u >= i2.l ||
+    i2.l <= i1.l && i2.u >= i1.l ||
+    i1.u >= i2.u && i1.l <= i2.u ||
+    i2.u >= i1.u && i2.l <= i1.u ;;
+
 let intr_overlap (intr1 : 'a intr) (intr2 : 'a intr) : bool = 
     match intr1, intr2 with
+    | Intr i1, Intr i2 -> interval_overlap i1 i2 
+    | IntrBot, _ | _, IntrBot | IntrErr, _ | _, IntrErr -> false ;;
+
+let intr_adjacent (intr1 : float intr) (intr2 : float intr) : bool =
+    match intr1, intr2 with
     | Intr i1, Intr i2 ->
-        i1.l <= i2.l && i1.u >= i2.l ||
-        i2.l <= i1.l && i2.u >= i1.l ||
-        i1.u >= i2.u && i1.l <= i2.u ||
-        i2.u >= i1.u && i2.l <= i1.u 
+        i1.l = i2.u +. ulp(i2.u) ||
+        (*i1.l = i2.u -. ulp(i2.u) || *)
+        (*i1.u = i2.l +. ulp(i2.l) || *)
+        i1.u = i2.l -. ulp(i2.l)
     | IntrBot, _ | _, IntrBot | IntrErr, _ | _, IntrErr -> false ;;
 
 let lower (intr : 'a intr) = 
@@ -123,29 +144,47 @@ let split_binade_neg (i : float interval) : float intr list =
 
 
 let split_binade (intr : float intr) : float intr list =
-    (* Format.printf "split_binade\n" ; *)
+    let pos_lb = succ 0. in
+    let neg_ub = pred 0. in
     match intr with
     | Intr i -> 
-        if snd (frexp i.l) = snd (frexp i.u) then ((* Format.printf "i.l = i.u\n" ; *) [intr]) else 
-        if i.l = 0. then (
-            (* (Format.printf "i.l = 0\n" ; *)
-            split_binade_pos {l = succ 0. ; u = i.u}) else
-        if i.u = 0. then (
-            (* (Format.printf "i.u = 0\n" ; *)
-            split_binade_neg {l = i.l ; u = pred 0.}) else
-        if i.l > 0. then (
-            (* (Format.printf "i.l > 0\n" ; *)
-            split_binade_pos i) else 
-        if i.u < 0. then (
-            (* (Format.printf "i.u < 0\n" ; *)
-            split_binade_neg i) else (
-        (* (Format.printf "crossing 0\n" ; *)
-        split_binade_neg { l = i.l ; u = (pred 0.) } @
-        [ intr_of 0. 0. ] @
-        split_binade_pos { l = (succ 0.) ; u = i.u })
+        if snd (frexp i.l) = snd (frexp i.u) then [intr] else 
+        if i.l = 0. then 
+            intr_of (succ 0.) pos_lb  :: 
+            split_binade_pos {l = pos_lb ; u = i.u} else
+        if i.u = 0. then 
+            intr_of neg_ub (pred 0.) :: 
+            split_binade_neg {l = i.l ; u = neg_ub} else
+        if i.l > 0. then split_binade_pos i else 
+        if i.u < 0. then split_binade_neg i else (
+            split_binade_neg { l = i.l ; u = neg_ub } @
+            [ intr_of neg_ub pos_lb ] @
+            split_binade_pos { l = pos_lb ; u = i.u })
     | _ -> (
         (* (Format.printf "not Intr i\n" ; *)
         [intr]) ;;
+(*
+let split_binade (intr : float intr) : float intr list =
+    let pos_lb = pow (2.) (-5.) in
+    let neg_ub = (-.pos_lb) in
+    match intr with
+    | Intr i -> 
+        if snd (frexp i.l) = snd (frexp i.u) then [intr] else 
+        if i.l = 0. then 
+            intr_of (succ 0.) pos_lb  :: 
+            split_binade_pos {l = pos_lb ; u = i.u} else
+        if i.u = 0. then 
+            intr_of neg_ub (pred 0.) :: 
+            split_binade_neg {l = i.l ; u = neg_ub} else
+        if i.l > 0. then split_binade_pos i else 
+        if i.u < 0. then split_binade_neg i else (
+            split_binade_neg { l = i.l ; u = neg_ub } @
+            [ intr_of neg_ub pos_lb ] @
+            split_binade_pos { l = pos_lb ; u = i.u })
+    | _ -> (
+        (* (Format.printf "not Intr i\n" ; *)
+        [intr]) ;;
+        *)
 
 
 (* Arithmetic operators *)
@@ -314,8 +353,12 @@ let intr_without (intr1 : float intr) (intr2 : float intr) : float intr list =
     | _, IntrErr | _, IntrBot -> [intr1] ;;
 
 (* section of i1 without any of is *)
-let intr_withouts (i1 : float intr) (is : float intr list) : float intr list =
-    concat_map (fun i -> intr_without i1 i) is ;;
+let rec intr_withouts (i1 : float intr) (is : float intr list) : float intr list =
+    intr_withouts_inner [i1] is
+and intr_withouts_inner (acc : float intr list) (lst : float intr list) : float intr list =
+    match lst with
+    | x :: xs -> intr_withouts_inner (concat_map (fun i -> intr_without i x) acc) xs
+    | [] -> acc
 
 (* Get the section of i1 that overlap with i2 *)
 let intr_with (intr1 : float intr) (intr2 : float intr) : float intr =
@@ -334,6 +377,16 @@ let intr_partition (i1 : float intr) (i2 : float intr)
     : (float intr list * float intr) = 
     (intr_without i1 i2, intr_with i1 i2) ;;
 
+let str_interval i = 
+    "[" ^ Format.sprintf "%f" i.l ^ 
+    " ; " ^ Format.sprintf "%f" i.u ^ "]" ;;
+
+let str_intr intr =
+    match intr with
+    | Intr i -> str_interval i
+    | IntrErr -> "IntrErr"
+    | IntrBot -> "_|_" ;;
+
 (* Get the intervals which meets the Sterbenz condition for i *)
 let rec get_sterbenz_intr (intr : float intr) : float intr = 
     match intr with
@@ -347,8 +400,8 @@ let rec get_sterbenz_intr (intr : float intr) : float intr =
                  intr_of d.u m.l
              else if i.u <= 0. then
                  intr_of m.u d.l
-             else
-                 raise (IntervalError "missing case when getting sterbenz_intervals")
+             else IntrBot
+                 (* raise (IntervalError "missing case when getting sterbenz_intervals")) *)
          | IntrBot, _ | _, IntrBot -> IntrBot
          | IntrErr, _ | _, IntrErr -> IntrErr)
     | IntrBot -> IntrBot

@@ -2,8 +2,15 @@ open List
 
 (* product_map f [a1; ...; an] [b1; ...; bm] = 
    [f a1 b1; f a1 b2; ... f a2 b1 ; f a2 b2 ; ... ; f an bm] *)
-(* 'a -> 'b -> 'c -> 'a list -> 'b list -> 'c list *)
-let product_map f xs ys = concat_map (fun x -> map (fun y -> f x y) ys) xs;;
+let product_map (f : 'a -> 'b -> 'c) (xs : 'a list) (ys : 'b list) : 'c list = 
+    let tot = (length xs) in
+    let i = ref 0 in 
+    let ret = concat_map (fun x -> 
+        i := !i + 1;
+        Format.printf "\rproduct map %d/%d" !i tot; Format.print_flush() ;
+        map (fun y -> f x y) ys) xs in
+    (* Format.printf "\ncreated %d segments \n" (length ret); ret;; *)
+    ret ;;
 
 let min_int l = List.fold_left Int.min Int.max_int l ;;
 let max_int l = List.fold_left Int.max Int.min_int l ;;

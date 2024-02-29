@@ -39,8 +39,16 @@ let analyze filename =
     let cstmt = transform (parse_file filename) !fun_name in
     let astmt = abst_stmt cstmt in
     (* printfile cstmt amem ; *)
-    str_amem (abst_interp astmt amem) ;;
+    abst_interp astmt amem ;;
+
+let write_file name mem =
+    let oc = open_out name in
+    Printf.fprintf oc "%s" (Printing.csv_amem mem);;
 
 let () =
-    if !testing then Test.runtests () else
-    Format.printf "%s\n\n" (analyze !input_file)
+    if !testing 
+    then Test.runtests () 
+    else
+        let mem = (analyze !input_file) in
+        (* Format.printf "%s\n\n" (str_amem mem) ; *)
+        write_file "out.csv" mem ;;
