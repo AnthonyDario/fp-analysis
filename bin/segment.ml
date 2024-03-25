@@ -52,6 +52,14 @@ let seg_with (s1 : segment) (s2 : segment) : segment =
     let overlap = intr_with s1.int s2.int in
     seg_of_intr overlap s1.err ;;
 
+(* Same as above but works with intervals *)
+let seg_with_intr (s : segment) (i : float intr) : segment option =
+    let overlap = intr_with s.int i in
+    match overlap with
+    | Intr i -> Some (seg_of_intr overlap s.err)
+    | _ -> None ;;
+    
+
 (* First element of return is s1 without any overlap of s2.  Second element is
  * overlapping portion *)
 let seg_partition (s1 : segment) (s2 : segment)

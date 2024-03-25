@@ -65,6 +65,7 @@ let intr_overlap (intr1 : 'a intr) (intr2 : 'a intr) : bool =
     | Intr i1, Intr i2 -> interval_overlap i1 i2 
     | IntrBot, _ | _, IntrBot | IntrErr, _ | _, IntrErr -> false ;;
 
+
 let intr_adjacent (intr1 : float intr) (intr2 : float intr) : bool =
     match intr1, intr2 with
     | Intr i1, Intr i2 ->
@@ -360,13 +361,10 @@ and intr_withouts_inner (acc : float intr list) (lst : float intr list) : float 
     | x :: xs -> intr_withouts_inner (concat_map (fun i -> intr_without i x) acc) xs
     | [] -> acc
 
-(* Get the section of i1 that overlap with i2 *)
+(* Get the section of i1 that overlaps with i2 *)
 let intr_with (intr1 : float intr) (intr2 : float intr) : float intr =
     match intr1, intr2 with
-    | Intr i1, Intr i2 ->
-        if i1.l < i2.l
-        then intr_of_exc i2.l (min_flt [i1.u ; i2.u])
-        else intr_of_exc i1.l (min_flt [i1.u ; i2.u])
+    | Intr i1, Intr i2 -> intr_of_exc (max_flt [i1.l; i2.l]) (min_flt [i1.u; i2.u])
     | IntrErr, _ -> IntrErr
     | IntrBot, _ -> IntrBot
     | _, IntrErr | _, IntrBot -> intr1 ;;

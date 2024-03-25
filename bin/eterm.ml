@@ -173,7 +173,12 @@ let ediv le re =
 (* Boolean operators *)
 (* Get overlapping portion of both step-functions *)
 let overlap (e1: eterm) (e2: eterm) : (eterm * eterm) =
-    
+    match e1, e2 with
+    | Eterm segs1, Eterm segs2 ->
+        let ov = intr_with (range e1) (range e2) in
+        (Eterm (filter_map (fun s -> seg_with_intr s ov) segs1),
+         Eterm (filter_map (fun s -> seg_with_intr s ov) segs2))
+    | Bot, _ | _, Bot -> (Bot, Bot) ;;
 
 
 (* Chops based upen segment comparison function passed in *)
