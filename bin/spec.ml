@@ -35,14 +35,14 @@ let parse_seg (str : string) =
     let intr = parse_intr (nth split 0) in
     seg_of_intr intr (Float.of_string (nth split 1)) ;;
 
-let parse_eterm (str : string) = 
+let parse_stepF (str : string) = 
     let no_braces = global_replace (regexp "[{}]") "" str in
     let seg_strs = filter notempty (map trim (split_on_char ')' no_braces)) in
-    AFloat (Eterm (map parse_seg seg_strs))
+    AFloat (StepF (map parse_seg seg_strs))
 
 let parse_line (l : string) : (string * aval) = 
     let split = map trim (split_on_char '=' l) in
-    (nth split 0, (parse_eterm (nth split 1))) ;;
+    (nth split 0, (parse_stepF (nth split 1))) ;;
 
 (* Split the file by lines *)
 (* grab each line and turn it into a value *)

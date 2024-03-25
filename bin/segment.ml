@@ -33,6 +33,9 @@ let get_segs_range (segs : segment list) : float intr list =
                                 map (fun i -> if intr_overlap i s.int then intr_union i s.int else i) acc) [x.int] xs
     | [] -> [IntrBot] ;;
 
+let lower_bnd (s : segment) : float = lower s.int ;;
+let upper_bnd (s : segment) : float = upper s.int ;;
+
 
 (* Same as intr without but maintain the error *)
 (* Remove seg2 from seg1 *)

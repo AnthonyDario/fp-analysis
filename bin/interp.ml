@@ -4,26 +4,27 @@ open Util
 open Tree
 open Interval
 open Segment
-open Eterm
+open Stepfunction
 
 exception UnassignedVariableException of string ;;
 
 (* Abstraction *)
-(* alpha : CStmt -> AStmt *)
+(* --------------------------------------------------- *)
 
-let abst_flt f = { int = Intr { u = f ; l = f }; err = ulp f } ;;
+let abst_flt (f : float) : segment = 
+    { int = Intr { u = f ; l = f }; err = ulp f } ;;
 
-let abst_typ typ =
+let abst_typ (typ : ctyp) : atyp =
     match typ with
     | IntTyp -> IntrTyp
     | FloatTyp -> AStepTyp ;;
 
-let abst_val v =
+let abst_val (v : cval) : aval =
     match v with
     | CInt i -> AInt (Intr { l = i ; u = i })
-    | CFloat f -> AFloat (Eterm [abst_flt f]) ;;
+    | CFloat f -> AFloat (StepF [abst_flt f]) ;;
 
-let rec abst_aexp exp = 
+let rec abst_aexp (exp : caexp) : aaexp = 
     match exp with
     | CVal v      -> AVal (abst_val v)
     | CVar (n, t) -> AVar (n, abst_typ t)
@@ -32,7 +33,7 @@ let rec abst_aexp exp =
     | CMul (l, r) -> AMul ((abst_aexp l), (abst_aexp r))
     | CDiv (l, r) -> ADiv ((abst_aexp l), (abst_aexp r)) ;;
 
-let abst_bexp exp =
+let abst_bexp (exp : cbexp) : abexp =
     match exp with
     | CLt (l, r) -> ALt ((abst_aexp l), (abst_aexp r))
     | CLe (l, r) -> ALe ((abst_aexp l), (abst_aexp r))
@@ -41,7 +42,7 @@ let abst_bexp exp =
     | CGe (l, r) -> AGe ((abst_aexp l), (abst_aexp r))
     | CGt (l, r) -> AGt ((abst_aexp l), (abst_aexp r)) ;;
     
-let rec abst_stmt exp = 
+let rec abst_stmt (exp : cstmt) : astmt = 
     match exp with
     | CAsgn (n, v) -> 
         AAsgn (n, (abst_aexp v))
@@ -56,16 +57,20 @@ let rec abst_stmt exp =
     ;;
 
 (* Abstract semantics *)
-
-let aval_op l r iintr_op eterm_op = 
+(* --------------------------------------------------- *)
+let aval_op (l : aval) (r : aval) 
+            (iintr_op : intIntr -> intIntr -> intIntr) 
+            (sf_op : stepF -> stepF -> stepF) 
+            : aval = 
     match l, r with
     | AInt ii1, AInt ii2 -> AInt (iintr_op ii1 ii2)
     | AInt ii, AFloat et | AFloat et, AInt ii -> 
-        AInt (iintr_op ii (eterm_to_iintr et))
-    | AFloat et1, AFloat et2 -> AFloat (eterm_op et1 et2) ;;
+        AInt (iintr_op ii (sf_to_iintr et))
+    | AFloat et1, AFloat et2 -> AFloat (sf_op et1 et2) ;;
 
-(* [[A]] *)
-let rec asem_aexp (exp : aaexp) (mem : amem) =
+(* Arithmetic Expressions *)
+(* --------------------------------------------------- *)
+let rec asem_aexp (exp : aaexp) (mem : amem) : (aval * id) =
     let { dom = _ ; lookup = m } = mem in
     match exp with
     | AVal e      -> (e, Const)
@@ -90,43 +95,53 @@ let rec asem_aexp (exp : aaexp) (mem : amem) =
                   (fst (asem_aexp r mem)) 
                   iintr_div ediv, Const) ;;
 
-(* abstract boolean operators *)
-
-(* "less than" : (eterm * Id) * (eterm * Id) -> (eterm * Id) * (eterm * Id) *)
-let abst_op left right op =
+(* Abstract boolean operators *)
+(* --------------------------------------------------- *)
+let abst_op (left : stepF) (right : stepF) 
+            (op : stepF -> stepF -> (stepF * stepF)) : (stepF * stepF) =
     match left, right with
-    | Eterm _, Eterm _ -> 
+    | StepF _, StepF _ -> 
         let (new_l, new_r) = op left right in
         (new_l, new_r)
     | _, _ -> (Bot, Bot) ;;
     
 
 (* Need to maintain the types of each side of the operator *)
-let abst_bool_op l r iintr_op eterm_op = 
-    let (ltrm, lid) = l in
-    let (rtrm, rid) = r in
-    let wrap (l, r) cons = ((cons l, lid), (cons r, rid)) in   (* wrap into a tuple *)
-    let intc, fltc = (fun x -> AInt x), (fun x -> AFloat x) in (* put value in constructors *)
+let abst_bool_op (l : aval * id) (r : aval * id) 
+                 (iintr_op : intIntr -> intIntr -> (intIntr * intIntr))
+                 (sf_op : stepF -> stepF -> (stepF * stepF))
+                 : ((aval * id) * (aval * id)) = 
+
+    let (ltrm, lid), (rtrm, rid) = l, r in
+
+    (* wrap into a tuple *)
+    let wrap_int (l, r : intIntr * intIntr) : (aval * id) * (aval * id) = 
+        ((AInt l, lid), (AInt r, rid)) in
+
+    let wrap_flt (l, r : stepF * stepF) : (aval * id) * (aval * id) =
+        ((AFloat l, lid), (AFloat r, rid)) in
+
     match ltrm, rtrm with
-    | AInt ii1, AInt ii2 -> wrap (iintr_op ii1 ii2) intc
-    | AInt ii, AFloat et -> 
-        ((AInt (fst (iintr_op ii (eterm_to_iintr et))), lid), 
-         (AFloat (snd (eterm_op (iintr_to_eterm ii) et)), rid))
-    | AFloat et, AInt ii -> 
-        ((AFloat (fst (eterm_op et (iintr_to_eterm ii))), lid),
-         (AInt (snd (iintr_op (eterm_to_iintr et) ii)), rid))
-    | AFloat et1, AFloat et2 ->
-        wrap (abst_op et1 et2 eterm_op) fltc ;;
+    | AFloat sf1, AFloat sf2 -> wrap_flt (abst_op sf1 sf2 sf_op)
+    | AInt ii1, AInt ii2 -> wrap_int (iintr_op ii1 ii2)
+    | AInt ii, AFloat sf -> 
+        ((AInt (fst (iintr_op ii (sf_to_iintr sf))), lid), 
+         (AFloat (snd (sf_op (iintr_to_sf ii) sf)), rid))
+    | AFloat sf, AInt ii -> 
+        ((AFloat (fst (sf_op sf (iintr_to_sf ii))), lid),
+         (AInt (snd (iintr_op (sf_to_iintr sf) ii)), rid))
+    ;;
 
-let abst_lt l r = abst_bool_op l r iintr_lt eterm_lt ;;
-let abst_le l r = abst_bool_op l r iintr_le eterm_le ;;
-let abst_gt l r = abst_bool_op l r iintr_gt eterm_gt ;;
-let abst_ge l r = abst_bool_op l r iintr_ge eterm_ge ;;
-let abst_eq l r = abst_bool_op l r iintr_eq eterm_eq ;;
-let abst_neq l r = abst_bool_op l r iintr_neq eterm_neq ;;
+let abst_lt l r = abst_bool_op l r iintr_lt sf_lt ;;
+let abst_le l r = abst_bool_op l r iintr_le sf_le ;;
+let abst_gt l r = abst_bool_op l r iintr_gt sf_gt ;;
+let abst_ge l r = abst_bool_op l r iintr_ge sf_ge ;;
+let abst_eq l r = abst_bool_op l r iintr_eq sf_eq ;;
+let abst_neq l r = abst_bool_op l r iintr_neq sf_neq ;;
 
-(* [[B]] *)
-let asem_bexp (exp : abexp) (m : amem) =
+(* Abstract Semantics of boolean expressions *)
+(* --------------------------------------------------- *)
+let asem_bexp (exp : abexp) (m : amem) : amem =
     match exp with
     | ALt (l, r) -> 
         let ((new_l, lid), (new_r, rid)) = abst_lt (asem_aexp l m) (asem_aexp r m) in
@@ -148,9 +163,9 @@ let asem_bexp (exp : abexp) (m : amem) =
 let aval_union (a1 : aval) (a2 : aval) : aval = 
     match a1, a2 with
     | AInt ii1, AInt ii2 -> AInt (iintr_union ii1 ii2)
-    | AInt ii, AFloat et -> AInt (iintr_union ii (eterm_to_iintr et))
-    | AFloat et, AInt ii -> AInt (iintr_union (eterm_to_iintr et) ii)
-    | AFloat et1, AFloat et2 -> AFloat (eterm_union et1 et2) ;;
+    | AInt ii, AFloat et -> AInt (iintr_union ii (sf_to_iintr et))
+    | AFloat et, AInt ii -> AInt (iintr_union (sf_to_iintr et) ii)
+    | AFloat et1, AFloat et2 -> AFloat (sf_union et1 et2) ;;
 
 (* u_mem : amem -> amem -> amem *)
 let u_amem mem1 mem2 = 

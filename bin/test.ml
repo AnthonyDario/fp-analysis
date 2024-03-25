@@ -5,7 +5,7 @@ open Format
 open Interp
 open Printing
 open Tree
-open Eterm
+open Stepfunction
 open Segment
 open Interval
 open Util
@@ -30,8 +30,8 @@ let test_bool input output m = test_tuple input output test_eq m ;;
 let equal_lsts lst vals = (test_in vals lst && test_in lst vals) ;;
 let test_lst lst vals m = test (equal_lsts lst vals) m ;;
 let test_tup_lst ins outs = test_tuple ins outs test_lst ;;
-let test_ets et1 et2 m = test_lst (get_segs et1) (get_segs et2) m ;;
-let test_ets_b input output m = test_tuple input output test_ets m ;;
+let test_sfs sf1 sf2 m = test_lst (get_segs sf1) (get_segs sf2) m ;;
+let test_sfs_b input output m = test_tuple input output test_sfs m ;;
 
 (* Util Testing *)
 (* ---------------------- *)
@@ -482,12 +482,12 @@ let seg_testing () =
     (*err_tests () *);;
 
 
-(* Eterm Testing *)
+(* StepFunction Testing *)
 (* ---------------------- *)
-let x = Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ] ;;
-let y = Eterm [ seg_of 1. 3. 0.001 ; seg_of 3. 6. 0.011 ] ;;
-let z = Eterm [ seg_of 1. 5. 0.013 ; seg_of 5. 10. 0.017 ] ;;
-let t2 = Eterm [ seg_of 1. 2. 0.001 ; seg_of 2. 4. 0.02 ] ;;
+let x = StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ] ;;
+let y = StepF [ seg_of 1. 3. 0.001 ; seg_of 3. 6. 0.011 ] ;;
+let z = StepF [ seg_of 1. 5. 0.013 ; seg_of 5. 10. 0.017 ] ;;
+let t2 = StepF [ seg_of 1. 2. 0.001 ; seg_of 2. 4. 0.02 ] ;;
 
 let range_tests () = 
     test_eq (range x) (intr_of 2. 8.) "range failed happy path test" ;
@@ -504,9 +504,9 @@ let get_segs_test () =
 
 
 let append_test () = 
-    let out = Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ; 
+    let out = StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ; 
                       seg_of 1. 3. 0.001 ; seg_of 3. 6. 0.011 ] in
-    test_ets (eterm_append x (get_segs y)) out "eterm_append test failed" ;;
+    test_sfs (sf_append x (get_segs y)) out "sf_append test failed" ;;
 
 (*
 let () =
@@ -533,9 +533,9 @@ let combine_segs_test () =
              "combine_segs failed adjacent test" ;;
 
 let merge_test () =
-    let test = eterm_append x (get_segs y) in 
-    let happy_test = Eterm [ seg_of 0. 1. 0.1 ; seg_of 1. 2. 0.2 ] in
-    let test2 = Eterm [ seg_of (-4.) 0. 0.031 ; seg_of 0. 1. 0.021 ;  
+    let test = sf_append x (get_segs y) in 
+    let happy_test = StepF [ seg_of 0. 1. 0.1 ; seg_of 1. 2. 0.2 ] in
+    let test2 = StepF [ seg_of (-4.) 0. 0.031 ; seg_of 0. 1. 0.021 ;  
                         seg_of 1. 5. 0.021001 ; seg_of 5. 7. 0.011 ] in
     (* Format.printf "merge test:\n%s\n%s\n" (str_eterm (merge test2)) (str_eterm test2) ; *)
     test_lst (get_segs (merge happy_test))
@@ -554,25 +554,25 @@ let merge_test () =
 let eterm_arith_tests () = 
     let x1, x2 = (seg_of 2. 4. 0.02, seg_of 4. 8. 0.01) in
     let y1, y2 = (seg_of 1. 3. 0.001, seg_of 3. 6. 0.011) in
-    test_ets (eadd x y) 
+    test_sfs (eadd x y) 
         (merge (Eterm [seg_of 3. 5. (err_add x1 y1) ;
                        seg_of 5. 10. (err_add x1 y2) ;
                        seg_of 5. 12. (err_add x2 y1) ;
                        seg_of 7. 14. (err_add x2 y2)]))
         "eadd failed test" ;
-    test_ets (esub x y) 
+    test_sfs (esub x y) 
         (merge (Eterm [seg_of (-4.) 0. (err_sub x1 y2) ;
                        seg_of 0. 1. (err_sbenz x1 y2) ;
                        seg_of 1. 5. (err_sub x2 y2) ;
                        seg_of 5. 7. (err_sub x2 y1)]))
         "esub failed test" ;
-    test_ets (emul x y) 
+    test_sfs (emul x y) 
         (merge (Eterm [seg_of 2. 12. (err_mul x1 y1) ;
                        seg_of 6. 24. (err_mul x1 y2) ;
                        seg_of 4. 24. (err_mul x2 y1) ;
                        seg_of 12. 48. (err_mul x2 y2)]))
         "emul failed test" ;
-    test_ets (ediv x y) 
+    test_sfs (ediv x y) 
         (merge (Eterm [seg_of (2. /. 3.) 4. (err_div x1 y1) ;
                        seg_of (2. /. 6.) (4. /. 3.) (err_div x1 y2) ;
                        seg_of (4. /. 3.) 8. (err_div x2 y1) ;
@@ -581,101 +581,101 @@ let eterm_arith_tests () =
         *)
 
 
-let eterm_lt_test () = 
-    test_ets_b (eterm_lt x y) 
-               (Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. (6. -. ulp 6.) 0.01 ],
-                Eterm [ seg_of (2. +. ulp 2.) 3. 0.001 ; seg_of 3. 6. 0.011 ])
-               "eterm_lt failed remove top test" ;
-    test_ets_b (eterm_lt y x) 
-               (Eterm [ seg_of 1. 3. 0.001 ; seg_of 3. 6. 0.011 ],
-                Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ])
-               "eterm_lt failed no change test" ;
-    test_ets_b (eterm_lt z x) 
-               (Eterm [ seg_of 1. 5. 0.013 ; seg_of 5. (8. -. ulp 8.) 0.017 ],
-                Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ])
-               "eterm_lt failed contain test" ;;
+let sf_lt_test () = 
+    test_sfs_b (sf_lt x y) 
+               (StepF [ seg_of 2. 4. 0.02 ; seg_of 4. (6. -. ulp 6.) 0.01 ],
+                StepF [ seg_of (2. +. ulp 2.) 3. 0.001 ; seg_of 3. 6. 0.011 ])
+               "sf_lt failed remove top test" ;
+    test_sfs_b (sf_lt y x) 
+               (StepF [ seg_of 1. 3. 0.001 ; seg_of 3. 6. 0.011 ],
+                StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ])
+               "sf_lt failed no change test" ;
+    test_sfs_b (sf_lt z x) 
+               (StepF [ seg_of 1. 5. 0.013 ; seg_of 5. (8. -. ulp 8.) 0.017 ],
+                StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ])
+               "sf_lt failed contain test" ;;
 
 
-let eterm_le_test () = 
-    test_ets_b (eterm_le x y) 
-               (Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 6. 0.01 ],
-                Eterm [ seg_of 2. 3. 0.001 ; seg_of 3. 6. 0.011 ])
-               "eterm_le failed remove top test" ;
-    test_ets_b (eterm_le y x) 
-               (Eterm [ seg_of 1. 3. 0.001 ; seg_of 3. 6. 0.011 ],
-                Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ])
-               "eterm_le failed no change test" ;
-    test_ets_b (eterm_le z x) 
-               (Eterm [ seg_of 1. 5. 0.013 ; seg_of 5. 8. 0.017 ],
-                Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ])
-               "eterm_le failed contain test" ;;
+let sf_le_test () = 
+    test_sfs_b (sf_le x y) 
+               (StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 6. 0.01 ],
+                StepF [ seg_of 2. 3. 0.001 ; seg_of 3. 6. 0.011 ])
+               "sf_le failed remove top test" ;
+    test_sfs_b (sf_le y x) 
+               (StepF [ seg_of 1. 3. 0.001 ; seg_of 3. 6. 0.011 ],
+                StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ])
+               "sf_le failed no change test" ;
+    test_sfs_b (sf_le z x) 
+               (StepF [ seg_of 1. 5. 0.013 ; seg_of 5. 8. 0.017 ],
+                StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ])
+               "sf_le failed contain test" ;;
 
 
-let eterm_gt_test () = 
-    test_ets_b (eterm_gt x y) 
-               (Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ],
-                Eterm [ seg_of 1. 3. 0.001 ; seg_of 3. 6. 0.011 ])
-               "eterm_gt failed no-change top test" ;
-    test_ets_b (eterm_gt y x) 
-               (Eterm [ seg_of (2. +. ulp 2.) 3. 0.001 ; seg_of 3. 6. 0.011 ],
-                Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. (6. -. ulp 6.) 0.01 ])
-               "eterm_gt failed remove bottom test" ;
-    test_ets_b (eterm_gt z x) 
-               (Eterm [ seg_of (2. +. ulp 2.) 5. 0.013 ; seg_of 5. 10. 0.017 ],
-                Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ])
-               "eterm_gt failed contain test" ;;
+let sf_gt_test () = 
+    test_sfs_b (sf_gt x y) 
+               (StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ],
+                StepF [ seg_of 1. 3. 0.001 ; seg_of 3. 6. 0.011 ])
+               "sf_gt failed no-change top test" ;
+    test_sfs_b (sf_gt y x) 
+               (StepF [ seg_of (2. +. ulp 2.) 3. 0.001 ; seg_of 3. 6. 0.011 ],
+                StepF [ seg_of 2. 4. 0.02 ; seg_of 4. (6. -. ulp 6.) 0.01 ])
+               "sf_gt failed remove bottom test" ;
+    test_sfs_b (sf_gt z x) 
+               (StepF [ seg_of (2. +. ulp 2.) 5. 0.013 ; seg_of 5. 10. 0.017 ],
+                StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ])
+               "sf_gt failed contain test" ;;
 
 
-let eterm_ge_test () = 
-    test_ets_b (eterm_ge x y) 
-               (Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ],
-                Eterm [ seg_of 1. 3. 0.001 ; seg_of 3. 6. 0.011 ])
-               "eterm_ge failed no-change top test" ;
-    test_ets_b (eterm_ge y x) 
-               (Eterm [ seg_of 2. 3. 0.001 ; seg_of 3. 6. 0.011 ],
-                Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 6. 0.01 ])
-               "eterm_ge failed remove bottom test" ;
-    test_ets_b (eterm_ge z x) 
-               (Eterm [ seg_of 2. 5. 0.013 ; seg_of 5. 10. 0.017 ],
-                Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ])
-               "eterm_ge failed contain test" ;;
+let sf_ge_test () = 
+    test_sfs_b (sf_ge x y) 
+               (StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ],
+                StepF [ seg_of 1. 3. 0.001 ; seg_of 3. 6. 0.011 ])
+               "sf_ge failed no-change top test" ;
+    test_sfs_b (sf_ge y x) 
+               (StepF [ seg_of 2. 3. 0.001 ; seg_of 3. 6. 0.011 ],
+                StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 6. 0.01 ])
+               "sf_ge failed remove bottom test" ;
+    test_sfs_b (sf_ge z x) 
+               (StepF [ seg_of 2. 5. 0.013 ; seg_of 5. 10. 0.017 ],
+                StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ])
+               "sf_ge failed contain test" ;;
 
 
-let eterm_eq_test () = 
-    test_ets_b (eterm_eq x y) 
-               (Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 6. 0.01 ],
-                Eterm [ seg_of 2. 3. 0.001 ; seg_of 3. 6. 0.011 ]) 
-               "eterm_eq failed overlap test" ;
-    test_ets_b (eterm_eq x z)
-               (Eterm [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ],
-                Eterm [ seg_of 2. 5. 0.013 ; seg_of 5. 8. 0.017 ]) 
-               "eterm_eq failed contains test" ;;
+let sf_eq_test () = 
+    test_sfs_b (sf_eq x y) 
+               (StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 6. 0.01 ],
+                StepF [ seg_of 2. 3. 0.001 ; seg_of 3. 6. 0.011 ]) 
+               "sf_eq failed overlap test" ;
+    test_sfs_b (sf_eq x z)
+               (StepF [ seg_of 2. 4. 0.02 ; seg_of 4. 8. 0.01 ],
+                StepF [ seg_of 2. 5. 0.013 ; seg_of 5. 8. 0.017 ]) 
+               "sf_eq failed contains test" ;;
     
 
-let eterm_neq_test () = test_ets_b (eterm_neq x y) (x, y) "eterm_neq failed test" ;;
+let sf_neq_test () = test_sfs_b (sf_neq x y) (x, y) "sf_neq failed test" ;;
 
 
-let eterm_union_test () =
-    test_ets (eterm_union x y)
-             (Eterm [ seg_of 1. 2. 0.001 ; seg_of 2. 4. 0.02 ;
+let sf_union_test () =
+    test_sfs (sf_union x y)
+             (StepF [ seg_of 1. 2. 0.001 ; seg_of 2. 4. 0.02 ;
                       seg_of 4. 6. 0.011 ; seg_of 6. 8. 0.01 ])
-        "eterm_union failed test" ;;
+        "sf_union failed test" ;;
 
 
-let eterm_testing () =
+let sf_testing () =
     range_tests () ;
     get_segs_test () ;
     append_test () ;
     combine_segs_test () ;
     merge_test () ;
-    (*eterm_arith_tests () ; *) 
-    eterm_lt_test () ;
-    eterm_le_test () ;
-    eterm_gt_test () ;
-    eterm_ge_test () ;
-    eterm_eq_test () ;
-    eterm_neq_test () ;
-    eterm_union_test () ;;
+    (*sf_arith_tests () ; *) 
+    sf_lt_test () ;
+    sf_le_test () ;
+    sf_gt_test () ;
+    sf_ge_test () ;
+    sf_eq_test () ;
+    sf_neq_test () ;
+    sf_union_test () ;;
 
 (* Parser Testing *)
 
@@ -744,7 +744,7 @@ let test = CCol (CAsgn ("x", CVal (CFloat 7.2)),
 (* Testing with parameters *)
 let amem_init = 
     amem_update (Id "x") 
-                (AFloat (Eterm [{int = Intr {l = 10. ; u = 14. } ; err = 0. }]))
+                (AFloat (StepF [{int = Intr {l = 10. ; u = 14. } ; err = 0. }]))
                 amem_bot ;;
 
 let test2 = CIf (CGt (CVar ("x", FloatTyp), CVal (CFloat 12.2)),
@@ -764,7 +764,7 @@ let runtests () =
     intr_testing () ;
     seg_testing() ;
     util_testing () ;
-    eterm_testing () ; 
+    sf_testing () ; 
     parser_testing () ;
     Format.printf "All tests passed!\n" ;;
 

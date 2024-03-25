@@ -1,5 +1,5 @@
 open Interval
-open Eterm
+open Stepfunction
 
 (* Concrete Domain *)
 type ctyp = IntTyp | FloatTyp ;;
@@ -38,7 +38,7 @@ type atyp = IntrTyp | AStepTyp
 
 type aval = 
     | AInt   of int intr
-    | AFloat of eterm ;;
+    | AFloat of stepF ;;
 
 type aaexp =
     | AVal of aval
