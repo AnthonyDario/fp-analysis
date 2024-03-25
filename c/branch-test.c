@@ -1,4 +1,6 @@
 // From Solovyev et al. FPTaylor
+// 0 <= a <= 100
+// 0 <= b <= 100
 int foo(double a, double b) {
     double r;
     if (b >= a) {

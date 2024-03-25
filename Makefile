@@ -1,8 +1,11 @@
 all : test run
 
 run: 
-	#dune exec --profile release -- analyzer -f foo c/simple-test.c -sf c/simple-test.spec
-	dune exec --profile release -- analyzer -f sin_dbl c/test-sin.c -sf c/test-sin.spec
+	dune exec --profile release -- analyzer -f foo c/branch-test-simple.c -sf c/branch-test-simple.spec
+	#dune exec --profile release -- analyzer -f foo c/simple-sub-test.c -sf c/simple-sub-test.spec
+	#dune exec --profile release -- analyzer -f foo c/branch-test.c -sf c/branch-test.spec
+	#dune exec --profile release -- analyzer -f sqroot c/sqrt-test.c -sf c/sqrt-test.spec
+	#dune exec --profile release -- analyzer -f sin_dbl c/test-sin.c -sf c/test-sin.spec
 	#dune exec --profile release -- analyzer -f foo c/test-nan.c -sf c/test-nan.spec
 	#dune exec --profile release -- analyzer -f foo c/test-sbenz.c -sf c/test-sbenz.spec
 	#dune exec --profile release -- analyzer -f foo c/test1.c -sf c/test1.spec
