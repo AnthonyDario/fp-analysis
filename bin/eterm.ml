@@ -65,7 +65,6 @@ let iintr_to_eterm (ii : int intr) =
 (* ------------------------- *)
 
 (* find overlapping segments *)
-
 let rec combine_segs (segs : segment list) : segment list =
     let total = length segs in
     let curr = ref 0 in
@@ -94,49 +93,6 @@ let seg_compare (s1 : segment) (s2 : segment) : int =
 
 let cnt = ref 0;;
 let tot = ref 0;;
-
-
-(*
-let rec merge et =
-    let err_first = sort seg_compare (get_segs et) in 
-    (* let err_first = sort (fun s1 s2 -> Float.compare s2.err s1.err) (get_segs et) in*)
-    tot := length err_first ;
-    cnt := 0 ;
-    let ret = Eterm (merge_inner [] [] err_first false) in
-    Format.printf "\nmerged %d into %d\n" !tot (length (get_segs ret)) ; ret
-and merge_inner (dom : float intr list) (acc : segment list) 
-                (lst : segment list) (has_nan : bool) : segment list = 
-    cnt := !cnt + 1;
-    Format.printf "\rmerged %d/%d - dom size = %d - acc size = %d" !cnt !tot (length dom) (length acc); 
-    Format.print_flush();
-    match lst with
-    | x :: xs -> 
-        if (has_nan && not (is_valid x.int)) 
-        then merge_inner dom acc xs true 
-        else (if (length acc > 0 &&
-                 x.err = (hd acc).err && 
-                 (intr_adjacent x.int (hd acc).int || intr_overlap x.int (hd acc).int))
-        then let com = combine_seg x (hd acc) in
-             merge_inner (expand_domain dom x.int)
-                         (* ((seg_withouts_intr com dom) @ acc) *)
-                         (com :: acc)
-                         xs
-                         (has_nan || (not (is_valid x.int)))
-        else merge_inner (expand_domain dom x.int) 
-                         ((seg_withouts_intr x dom) @ acc) 
-                         xs
-                         (has_nan || (not (is_valid x.int)))
-                         )
-    | [] -> acc
-and expand_domain (dom : float intr list) (i : float intr) : float intr list =
-    match dom with
-    | x :: xs ->
-        if intr_overlap i x || intr_adjacent i x
-        then expand_domain xs (intr_union x i)
-        else x :: expand_domain xs i
-    | [] -> [i] ;;
-(* and m_i_i (segs : segment list) *)
-*)
 
 (* Merge with adjacency comparing *)
 let rec merge et =
@@ -179,71 +135,6 @@ and expand_domain (dom : float intr list) (i : float intr) : float intr list =
         else x :: expand_domain xs i
     | [] -> [i] ;;
 
-(*
-let rec merge et =
-    let err_first = sort (fun s1 s2 -> Float.compare s2.err s1.err) (get_segs et) in
-    tot := length err_first ;
-    cnt := 0 ;
-    let ret = Eterm (merge_inner [] [] err_first false) in
-    Format.printf "\nmerged %d into %d\n" !tot (length (get_segs ret)) ; ret
-and merge_inner (dom : float intr list) (acc : segment list) 
-                (lst : segment list) (has_nan : bool) : segment list = 
-    cnt := !cnt + 1;
-    Format.printf "\rmerged %d/%d - dom size = %d - acc size = %d" !cnt !tot (length dom) (length acc); 
-    Format.print_flush();
-    match lst with
-    | x :: xs -> 
-        if (has_nan && not (is_valid x.int)) 
-        then merge_inner dom acc xs true 
-        else merge_inner (expand_domain dom x.int) 
-                         ((seg_withouts_intr x dom) @ acc) 
-                         xs
-                         (has_nan || (not (is_valid x.int)))
-    | [] -> acc
-and expand_domain (dom : float intr list) (i : float intr) : float intr list =
-    match dom with
-    | x :: xs ->
-        if intr_overlap i x || intr_adjacent i x
-        then expand_domain xs (intr_union x i)
-        else x :: expand_domain xs i
-    | [] -> [i] ;;
-*)
-
-(* TODO: DELETE ME*)
-let str_interval i = 
-    "[" ^ Format.sprintf "%f" i.l ^ 
-    " ; " ^ Format.sprintf "%f" i.u ^ "]" ;;
-
-let str_intr intr =
-    match intr with
-    | Intr i -> str_interval i
-    | IntrErr -> "IntrErr"
-    | IntrBot -> "_|_" ;;
-
-let str_intrs is =
-    fold_left (fun acc i -> acc ^ str_intr i ^ ", ") "{" is ^ "}" ;;
-
-let str_iInterval i =
-        "[" ^ Int.to_string i.l ^ 
-        " ; " ^ Int.to_string i.u ^ "]" ;;
-
-let str_iIntr intr =
-    match intr with
-    | Intr i -> str_iInterval i
-    | IntrErr -> "IntrErr"
-    | IntrBot -> "_|_" ;;
-
-let str_seg ie =
-    "(" ^ str_intr ie.int ^ ", " ^ Format.sprintf "%20.30f" ie.err ^ ")" ;;
-
-let str_segs segs =
-    fold_left (fun acc s -> acc ^ str_seg s ^ ", ") "{" segs ^ "}" ;;
-
-let str_eterm trm = 
-    match trm with
-    | Eterm ies -> str_segs ies
-    | Bot       -> "_" ;;
-
 (* eterm -> eterm -> eterm list *)
 let eop le re op =
     match le, re with
@@ -280,6 +171,11 @@ let ediv le re =
     eop le re seg_div ;;
 
 (* Boolean operators *)
+(* Get overlapping portion of both step-functions *)
+let overlap (e1: eterm) (e2: eterm) : (eterm * eterm) =
+    
+
+
 (* Chops based upen segment comparison function passed in *)
 let chop (eterm : eterm) (range : float intr) 
          (comp : segment -> segment -> (segment * segment)) : eterm =
