@@ -298,14 +298,9 @@ let seg_op_tests () =
     test_lst t1 [seg_of 6. (pred 8.) (err_add s1 s2 (intr_of 6. (pred 8.))) ;
                  seg_of 8. 12. (err_add s1 s2 (intr_of 8. 12.))]
         "seg_add failed" ;
-        (*
-    test_lst t2 [(seg_of (-6.) 0. (err_sub s1 s2 (hd t2).int))]
-        "seg_sub failed" ;
-        *)
-        (*
-    test_eq (length t2) 1019 (* TODO: THIS IS WERID *)
-        "seg_sub failed" ;
-        *)
+    test_eq (length t2)
+            1026
+            "seg_sub failed" ;
     test_lst t3 
             [(seg_of 8. (pred 16.) (err_mul s1 s2 (intr_of 8. (pred 16.)))) ;
              (seg_of 16. (pred 32.) (err_mul s1 s2 (intr_of 16. (pred 32.)))) ;

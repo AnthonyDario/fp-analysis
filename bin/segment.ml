@@ -88,6 +88,7 @@ let err_add (l : segment) (r : segment) (o : float intr) =
     l.err +. r.err +. (ulp_intr o) ;;
 
 let err_sub (l : segment) (r : segment) (o : float intr) = 
+    (* Format.printf "err_sub\n" ; *)
     l.err +. r.err +. (ulp_intr o) ;;
 
 let err_sbenz (l : segment) (r : segment) (_ : float intr) = 
@@ -112,38 +113,14 @@ let get_sterbenz_seg (seg : segment) : segment =
     let sbenz = get_sterbenz_intr seg.int in
     seg_of_intr sbenz seg.err ;;
 
-(* TODO: DELETE ME!!!!!!!!! *)
-let str_interval i = 
-    "[" ^ Format.sprintf "%f" i.l ^ 
-    " ; " ^ Format.sprintf "%f" i.u ^ "]" ;;
-
-let str_intr intr =
-    match intr with
-    | Intr i -> str_interval i
-    | IntrErr -> "IntrErr"
-    | IntrBot -> "_|_" ;;
-
-let str_intrs segs =
-    (fold_left (fun acc s -> acc ^ s ^ ", ") "{" (map str_intr segs)) ^ "}"
-
-let str_seg ie =
-    "(" ^ str_intr ie.int ^ ", " ^ Format.sprintf "%20.30f" ie.err ^ ")" ;;
-
-let str_segs segs =
-    (fold_left (fun acc s -> acc ^ s ^ ", ") "{" (map str_seg segs)) ^ "}"
-
 (* Arithmetic operators *)
 (* ---------------------- *)
 let seg_op (x : segment) (y : segment) 
            (intr_op : float intr -> float intr -> float intr)
            (err_op : segment -> segment -> float intr -> float) 
            : segment list =
-    (* Format.printf "seg_op: %s, %s\n\n" (str_seg x) (str_seg y) ; *)
-    (* Format.printf "seg_op\n" ; Format.print_flush (); *)
     let op_out = intr_op x.int y.int in
-    (* Format.printf "op_out: %s\n" (str_intr op_out) ; *)
     let split_result = split_binade op_out in
-    (* Format.printf " split binade into: %d parts\r" (length split_result) ; Format.print_flush() ; *)
     map (fun i -> { int = i ; err = err_op x y i }) split_result ;;
     
 
@@ -152,30 +129,22 @@ let seg_add (x : segment) (y : segment) : segment list =
 
 (* No special cases *)
 let seg_sub_reg (x : segment) (y : segment) : segment list =
-    (* Format.printf "SEG_SUB_REG: %s - %s\n\n\n" (str_seg x) (str_seg y) ; *)
     seg_op x y intr_sub err_sub ;;
 
 (* Sterbenz *)
 let seg_sub_sbenz (x : segment) (y : segment) : segment list =
-    (* Format.printf "seg_sub_sbenz: %s - %s\n" (str_seg x) (str_seg y) ; *)
     seg_op x y intr_sub err_sbenz ;;
 
 let seg_sub (x : segment) (y : segment) : segment list = 
-    (* Format.printf "seg_sub\n" ; *)
-    (* Format.printf "seg_sub: %s - %s\n" (str_seg x) (str_seg y) ; *)
     let reg, sbenz = (seg_partition y (get_sterbenz_seg x)) in
-    (* Format.printf "\treg: %s\n\tsbenz: %s\n\n" (str_segs reg) (str_seg sbenz) ; *)
     if sbenz = seg_bot 
     then concat_map (seg_sub_reg x) reg  
     else seg_sub_sbenz x sbenz @ concat_map (seg_sub_reg x) reg 
-    (* in Format.printf "END OF SEG_SUB\n\n" ; z *)
 
 let seg_mul (x : segment) (y : segment) : segment list = 
-    (* Format.printf "seg_mul\n" ; *)
     seg_op x y intr_mul err_mul ;;
 
 let seg_div (x : segment) (y : segment) : segment list = 
-    (* Format.printf "seg_div\n" ; *)
     seg_op x y intr_div err_div ;;
 
 
