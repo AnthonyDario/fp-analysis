@@ -116,8 +116,10 @@ let exp_to_binade (exp : int) : float = pow 2. (Float.of_int exp) ;;
 
 
 (* Split an interval on each binade with the lower bound being 1 ulp above the
- * previous binade *)
-
+ * previous binade .
+ * 
+ * We avoid subnormal numbers by taking the minimum normal binade.
+ *)
 let split_binade_pos (i : float interval) : float intr list =
     let (_, el) = frexp (Float.max min_float i.l) in (* the smallest exponent *)
     let (_, eu) = frexp i.u in                       (* the largest exponent *)
@@ -127,20 +129,19 @@ let split_binade_pos (i : float interval) : float intr list =
         List.init (Int.abs (eu - el - 1))
                   (fun x -> intr_of (exp_to_binade (x + el))
                                     (pred (exp_to_binade (x + 1 + el)))) in
-    (* Format.printf "pos:\neu = %d, el = %d\n\n" eu el ; *)
     init_intr :: middle_intrs @ [final_intr] ;;
 
 
+(* The lower bound will have a larger exponent *)
 let split_binade_neg (i : float interval) : float intr list =
-    let (_, el) = frexp i.l in (* the smallest exponent *)
-    let (_, eu) = frexp (Float.min (-.min_float) i.u) in (* the largest exponent *)
+    let (_, el) = frexp i.l in                           (* the largest exponent *)
+    let (_, eu) = frexp (Float.min (-.min_float) i.u) in (* the smallest exponent *)
     let init_intr = intr_of i.l (-.(exp_to_binade (el - 1))) in
     let final_intr = intr_of (succ (-.(exp_to_binade eu))) i.u in
     let middle_intrs = 
-        List.init (Int.abs ((-(el + eu)) - 1))
+        List.init (Int.abs (el - eu - 1))
                   (fun x -> intr_of (succ (-.(exp_to_binade (el - x - 1))))
                                     (-.(exp_to_binade (el - x - 2)))) in
-    (* Format.printf "neg:\neu = %d, el = %d\n\n" eu el ; *)
     init_intr :: middle_intrs @ [final_intr] ;;
 
 
@@ -151,15 +152,15 @@ let split_binade (intr : float intr) : float intr list =
     | Intr i -> 
         if snd (frexp i.l) = snd (frexp i.u) then [intr] else 
         if i.l = 0. then 
-            intr_of (succ 0.) pos_lb  :: 
+            intr_of 0. pos_lb  :: 
             split_binade_pos {l = pos_lb ; u = i.u} else
         if i.u = 0. then 
-            intr_of neg_ub (pred 0.) :: 
+            intr_of neg_ub 0. :: 
             split_binade_neg {l = i.l ; u = neg_ub} else
         if i.l > 0. then split_binade_pos i else 
         if i.u < 0. then split_binade_neg i else (
             split_binade_neg { l = i.l ; u = neg_ub } @
-            [ intr_of neg_ub pos_lb ] @
+            [ intr_of 0. 0. ] @
             split_binade_pos { l = pos_lb ; u = i.u })
     | _ -> (
         (* (Format.printf "not Intr i\n" ; *)

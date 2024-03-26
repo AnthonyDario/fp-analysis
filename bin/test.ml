@@ -113,15 +113,6 @@ let intr_mags_test () =
     test_eq (mag_sm_intr (intr_of (-5.) (-2.))) 2. "mag_sm_intr failed cross 0 test" ;
     test_eq (mag_sm_intr i4) 0. "mag_sm_intr failed cross 0 test" ;;
 
-(*
-let () =
-    Format.printf "pos - boundary\n%d\n\n%d\n\n" 
-             (length (split_binade (intr_of (0.) (1.))))
-             (1023 - 500) ;;
-    Format.printf "neg - boundary\n%d\n\n%d\n\n" 
-             (length (split_binade (intr_of (-1.) 0.)))
-             (1023 - 500) ;;
-             *)
 
 let intr_split_binade_test () =
     test_lst (split_binade (intr_of 0.4 9.)) 
@@ -144,19 +135,17 @@ let intr_split_binade_test () =
               intr_of (succ (-2.)) (-1.) ; intr_of (succ (-1.)) (-0.5) ;
               intr_of (succ (-0.5)) (-0.4) ]
              "split_binade failed negative values test" ;
-             (*
     test_lst (split_binade (intr_of (-2.1) (1.9))) 
              ((split_binade (intr_of (-2.1) (pred 0.))) @ 
-              [intr_of 0. 0.] @
+              [intr_of (-0.) 0.] @
               (split_binade (intr_of (succ 0.) 1.9)))
              "split_binade failed crossing 0 test" ;
     test_eq (length (split_binade (intr_of 0. 1.)))
-             (502)
+             (1024)
              "split_binade failed positive 0 boundary test" ;
     test_eq (length (split_binade (intr_of (-1.) 0.)))
-             (500)
+             (1024)
              "split_binade failed negative 0 boundary test" ;
-             *)
     test_lst (split_binade (intr_of 3. 3.5)) 
              [intr_of 3. 3.5]
              "split_binade failed one-binade test" ;;
