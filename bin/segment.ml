@@ -69,12 +69,6 @@ let seg_partition (s1 : segment) (s2 : segment)
     : (segment list * segment) =
     (seg_without s1 s2, seg_with s1 s2) ;;
 
-(* Dealing with error *)
-let ulp_add l r = ulp_intr (intr_add_op l r) ;;
-let ulp_sub l r = ulp_intr (intr_sub_op l r) ;;
-let ulp_mul l r = ulp_intr (intr_mul_op l r) ;;
-let ulp_div l r = ulp_intr (intr_div_op l r) ;;
-
 let ulp_op (l : segment) (r : segment) 
            (op : float interval -> float interval -> float) = 
     match l.int, r.int with
@@ -83,23 +77,21 @@ let ulp_op (l : segment) (r : segment)
 
 (* For these error functions, o is the result of the interval operation on l
  * and r *)
-
-let err_add (l : segment) (r : segment) (o : float intr) = 
+let err_add (l : segment) (r : segment) (o : float intr) : float = 
     l.err +. r.err +. (ulp_intr o) ;;
 
-let err_sub (l : segment) (r : segment) (o : float intr) = 
-    (* Format.printf "err_sub\n" ; *)
+let err_sub (l : segment) (r : segment) (o : float intr) : float = 
     l.err +. r.err +. (ulp_intr o) ;;
 
-let err_sbenz (l : segment) (r : segment) (_ : float intr) = 
+let err_sbenz (l : segment) (r : segment) (_ : float intr) : float = 
     l.err +. r.err ;;
 
-let err_mul (l : segment) (r : segment) (o : float intr) =
+let err_mul (l : segment) (r : segment) (o : float intr) : float =
     let lup = mag_lg_intr l.int in
     let rup = mag_lg_intr r.int in
     lup *. r.err +. rup *. l.err +. l.err *. r.err +. (ulp_intr o) ;;
 
-let err_div (l : segment) (r : segment) (o : float intr) =
+let err_div (l : segment) (r : segment) (o : float intr) : float =
     let lup = mag_lg_intr l.int in
     let rdn = mag_sm_intr r.int in
     ((lup *. r.err +. rdn *. l.err) /. (rdn *. rdn -. rdn *. r.err)) +.  

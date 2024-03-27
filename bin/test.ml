@@ -403,46 +403,27 @@ let seg_union_test () =
         "seg_union overlap test failed" ;;
 
 
-(* Error Testing *)
-(*
-let ulp_op_test () = 
-    test_eq (ulp_add (intr_to_interval i1) (intr_to_interval i2)) (0.5 *. ulp (4. +. 8.))
-        "ulp_add failed test" ;
-    test_eq (ulp_sub (intr_to_interval i1) (intr_to_interval i2)) (0.5 *. ulp (4. +. 8.))
-        "ulp_sub failed test" ;
-    test_eq (ulp_mul (intr_to_interval i1) (intr_to_interval i2)) (0.5 *. ulp (4. *. 8.))
-        "ulp_mul failed test" ;
-    test_eq (ulp_div (intr_to_interval i1) (intr_to_interval i2)) (0.5 *. ulp (4. /. 4.))
-        "ulp_div failed test" ;;
-*)
 
+(* Helpful util *)
+let last (l : 'a list) : 'a = nth l ((length l) - 1) ;;
 
-(*
 let err_tests () =
     let t1 = seg_add s1 s2 in
-    let t2 = seg_add s1 (seg_of 1. 2. infinity) in
-    let t3 = seg_sub s1 s2 in
-    let t4 = seg_mul s1 s2 in
-    let t5 = seg_div s2 s1 in
-    test_eq (err_add s1 s2 t1) 
-            (s1.err +. s2.err +. (ulp_add (intr_to_interval s1.int)
-                                          (intr_to_interval s2.int))) 
+    let t2 = seg_sub s1 s2 in
+    let t3 = seg_mul s1 s2 in
+    let t4 = seg_div s2 s1 in
+    test_lst (map (fun s -> err_add s1 s2 s.int) t1)
+             (map (fun s -> s.err) t1)
         "err_add failed test" ;
-    test_eq (err_add s1 (seg_of 1. 2. infinity) t2) infinity 
-        "err_add failed infinity test";
-    test_eq (err_sub s1 s2 t3) 
-            (s1.err +. s2.err +. (ulp_sub (intr_to_interval s1.int) 
-                                          (intr_to_interval s2.int)))
+    test_eq (map (fun s -> err_sub s1 s2 s.int) t2)
+            (map (fun s -> s.err) t2)
         "err_sub failed test" ;
-    test_eq (err_mul s1 s2 t3) 
-        ((4. *. 0.101) +. (8. *. 0.03) +. (0.03 *. 0.101) +. 
-        (ulp_mul (intr_to_interval s1.int) (intr_to_interval s2.int)))
+    test_eq (map (fun s -> err_mul s1 s2 s.int) t3)
+            (map (fun s -> s.err) t3)
         "err_mul failed test" ;
-    test_eq (err_div s2 s1 t5)
-        ((((8. *. 0.03) +. (2. *. 0.101)) /. ((2. *. 2.) -. (2. *. 0.03))) +. 
-        (ulp_div (intr_to_interval s2.int) (intr_to_interval s1.int)))
+    test_eq (map (fun s -> err_div s2 s1 s.int) t4)
+            (map (fun s -> s.err) t4)
         "err_div failed test" ;;
-        *)
 
 
 let seg_testing () =
@@ -462,8 +443,7 @@ let seg_testing () =
     seg_without_test () ;
     seg_withouts_test () ;
     seg_union_test () ;
-    (* ulp_op_test () ; *)
-    (*err_tests () *);;
+    err_tests () ;;
 
 
 (* StepFunction Testing *)
