@@ -45,8 +45,8 @@ let rec str_cstmt (stmt : cstmt) : string =
 
 (* Abstract Domain *)
 let str_interval (i : float interval) : string = 
-    "[" ^ Format.sprintf "%f" i.l ^ 
-    " ; " ^ Format.sprintf "%f" i.u ^ "]" ;;
+    "[" ^ Format.sprintf "%20.30f" i.l ^ 
+    " ; " ^ Format.sprintf "%20.30f" i.u ^ "]" ;;
 
 let str_intr (intr : fltIntr) : string =
     match intr with

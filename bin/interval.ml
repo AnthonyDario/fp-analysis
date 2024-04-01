@@ -18,6 +18,7 @@ type intIntr = int intr ;;
 
 (* inclusive *)
 let intr_of l u = if l > u then IntrBot else Intr {l = l ; u = u} ;;
+
 (* exclusive *)
 let intr_of_exc l u = if l >= u then IntrBot else Intr {l = l ; u = u} ;;
 
@@ -146,8 +147,7 @@ let split_binade_neg (i : float interval) : float intr list =
 
 
 let split_binade (intr : float intr) : float intr list =
-    let pos_lb = succ 0. in
-    let neg_ub = pred 0. in
+    let pos_lb, neg_ub = (succ 0. , pred 0.)in
     match intr with
     | Intr i -> 
         if snd (frexp i.l) = snd (frexp i.u) then [intr] else 
@@ -162,9 +162,7 @@ let split_binade (intr : float intr) : float intr list =
             split_binade_neg { l = i.l ; u = neg_ub } @
             [ intr_of 0. 0. ] @
             split_binade_pos { l = pos_lb ; u = i.u })
-    | _ -> (
-        (* (Format.printf "not Intr i\n" ; *)
-        [intr]) ;;
+    | _ -> ([intr]) ;;
 (*
 let split_binade (intr : float intr) : float intr list =
     let pos_lb = pow (2.) (-5.) in

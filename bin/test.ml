@@ -403,10 +403,6 @@ let seg_union_test () =
         "seg_union overlap test failed" ;;
 
 
-
-(* Helpful util *)
-let last (l : 'a list) : 'a = nth l ((length l) - 1) ;;
-
 let err_tests () =
     let t1 = seg_add s1 s2 in
     let t2 = seg_sub s1 s2 in
@@ -472,18 +468,6 @@ let append_test () =
                       seg_of 1. 3. 0.001 ; seg_of 3. 6. 0.011 ] in
     test_sfs (sf_append x (get_segs y)) out "sf_append test failed" ;;
 
-(*
-let () =
-    Format.printf "overlap:\n%s\n%s\n\n" 
-             (Printing.str_segs (combine_segs [ seg_of 0. 2. 0.1 ; seg_of 1. 3. 0.1]))
-             (Printing.str_segs [seg_of 0. 3. 0.1]) ;
-    Format.printf "list:\n%s\n%s\n\n" 
-             (Printing.str_segs (combine_segs [ seg_of 0. 2. 0.11 ; seg_of 1. 3. 0.1 ; seg_of (-1.) 2. 0.11]) )
-             (Printing.str_segs [seg_of (-1.) 2. 0.11 ; seg_of 1. 3. 0.1]) ;
-    Format.printf "adjacent:\n%s\n%s\n\n"  
-             (Printing.str_segs  (combine_segs [ seg_of 0. 1. 0.1 ; seg_of 1. 2. 0.1]) )
-             (Printing.str_segs [seg_of 0. 2. 0.1]) ;;
-*)
 
 let combine_segs_test () =
     test_lst (combine_segs [ seg_of 0. 2. 0.1 ; seg_of 1. 3. 0.1])
@@ -501,7 +485,6 @@ let merge_test () =
     let happy_test = StepF [ seg_of 0. 1. 0.1 ; seg_of 1. 2. 0.2 ] in
     let test2 = StepF [ seg_of (-4.) 0. 0.031 ; seg_of 0. 1. 0.021 ;  
                         seg_of 1. 5. 0.021001 ; seg_of 5. 7. 0.011 ] in
-    (* Format.printf "merge test:\n%s\n%s\n" (str_eterm (merge test2)) (str_eterm test2) ; *)
     test_lst (get_segs (merge happy_test))
              (get_segs happy_test)
              "merge failed no-change test" ;
@@ -514,35 +497,49 @@ let merge_test () =
              "merge failed boundary test" ;;
 
 
-(*
-let eterm_arith_tests () = 
+let sf_arith_tests () = 
     let x1, x2 = (seg_of 2. 4. 0.02, seg_of 4. 8. 0.01) in
     let y1, y2 = (seg_of 1. 3. 0.001, seg_of 3. 6. 0.011) in
-    test_sfs (eadd x y) 
-        (merge (Eterm [seg_of 3. 5. (err_add x1 y1) ;
-                       seg_of 5. 10. (err_add x1 y2) ;
-                       seg_of 5. 12. (err_add x2 y1) ;
-                       seg_of 7. 14. (err_add x2 y2)]))
+    test_sfs 
+        (eadd x y) 
+        (merge (StepF [seg_of 3. (pred 4.) (err_add x1 y1 (intr_of 3. (pred 4.))) ;
+                       seg_of 4. 5. (err_add x1 y1 (intr_of 4. (pred 5.))) ;
+                       seg_of 5. (pred 8.) (err_add x1 y2 (intr_of 5. (pred 8.))) ;
+                       seg_of 8. 10. (err_add x1 y2 (intr_of 8. (pred 10.))) ;
+                       seg_of 10. 14. (err_add x2 y2 (intr_of 10. 14.))])) 
         "eadd failed test" ;
-    test_sfs (esub x y) 
-        (merge (Eterm [seg_of (-4.) 0. (err_sub x1 y2) ;
-                       seg_of 0. 1. (err_sbenz x1 y2) ;
-                       seg_of 1. 5. (err_sub x2 y2) ;
-                       seg_of 5. 7. (err_sub x2 y1)]))
+    test_eq (length (get_segs (esub x y))) 15
         "esub failed test" ;
     test_sfs (emul x y) 
-        (merge (Eterm [seg_of 2. 12. (err_mul x1 y1) ;
-                       seg_of 6. 24. (err_mul x1 y2) ;
-                       seg_of 4. 24. (err_mul x2 y1) ;
-                       seg_of 12. 48. (err_mul x2 y2)]))
+        (merge (StepF [seg_of 2. (pred 4.) (err_mul x1 y1 (intr_of 2. (pred 4.))) ;
+                       seg_of 4. (pred 8.) (err_mul x1 y1 (intr_of 4. (pred 8.))) ;
+                       seg_of 8. 12. (err_mul x1 y1 (intr_of 8. 12.)) ;
+                       seg_of 6. (pred 8.) (err_mul x1 y2 (intr_of 6. (pred 8.))) ;
+                       seg_of 8. (pred 16.) (err_mul x1 y2 (intr_of 8. (pred 16.))) ;
+                       seg_of 16. 24. (err_mul x1 y2 (intr_of 16. 24.)) ;
+                       seg_of 4. (pred 8.) (err_mul x2 y1 (intr_of 4. (pred 8.))) ;
+                       seg_of 8. (pred 16.) (err_mul x2 y1 (intr_of 8. (pred 16.))) ;
+                       seg_of 16. 24. (err_mul x2 y1 (intr_of 8. 24.)) ;
+                       seg_of 12. (pred 16.) (err_mul x2 y2 (intr_of 12. (pred 16.))) ;
+                       seg_of 16. (pred 32.) (err_mul x2 y2 (intr_of 16. (pred 32.))) ;
+                       seg_of 32. 48. (err_mul x2 y2 (intr_of 32. 48.))]))
         "emul failed test" ;
     test_sfs (ediv x y) 
-        (merge (Eterm [seg_of (2. /. 3.) 4. (err_div x1 y1) ;
-                       seg_of (2. /. 6.) (4. /. 3.) (err_div x1 y2) ;
-                       seg_of (4. /. 3.) 8. (err_div x2 y1) ;
-                       seg_of (4. /. 6.) (8. /. 3.) (err_div x2 y2)]))
+        (merge (StepF [seg_of (2. /. 3.) (pred 1.)         (err_div x1 y1 (intr_of (2. /. 3.) (pred 1.))) ;
+                       seg_of 1. (pred 2.)                 (err_div x1 y1 (intr_of 1. (pred 2.))) ;
+                       seg_of 2. (pred 4.)                 (err_div x1 y1 (intr_of 2. (pred 4.))) ;
+                       seg_of 4. 4.                        (err_div x1 y1 (intr_of 4. 4.)) ;
+                       seg_of (2. /. 6.) (pred (1. /. 2.)) (err_div x1 y2 (intr_of (2. /. 6.) (pred (1. /. 2.)))) ;
+                       seg_of (1. /. 2.) (pred 1.)         (err_div x1 y2 (intr_of (1. /. 2.) (pred 1.))) ;
+                       seg_of 1. (4. /. 3.)                (err_div x1 y2 (intr_of 1. (4. /. 3.))) ;
+                       seg_of (4. /. 3.) (pred 2.)         (err_div x2 y1 (intr_of (4. /. 3.) (pred 2.))) ;
+                       seg_of 2. (pred 4.)                 (err_div x2 y1 (intr_of 2. (pred 4.))) ;
+                       seg_of 4. (pred 8.)                 (err_div x2 y1 (intr_of 4. (pred 8.))) ;
+                       seg_of 8. 8.                        (err_div x2 y1 (intr_of 8. 8.)) ;
+                       seg_of (4. /. 6.) (pred 1.)         (err_div x2 y2 (intr_of (4. /. 6.) (pred 1.))) ;
+                       seg_of 1. (pred 2.)                 (err_div x2 y2 (intr_of 1. (pred 2.))) ;
+                       seg_of 2. (8. /. 3.)                (err_div x2 y2 (intr_of 2. (8. /. 3.)))]))
         "ediv failed test" ;;
-        *)
 
 
 let sf_lt_test () = 
@@ -632,7 +629,7 @@ let sf_testing () =
     append_test () ;
     combine_segs_test () ;
     merge_test () ;
-    (*sf_arith_tests () ; *) 
+    sf_arith_tests () ;
     sf_lt_test () ;
     sf_le_test () ;
     sf_gt_test () ;

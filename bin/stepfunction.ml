@@ -118,7 +118,7 @@ and merge_inner (dom : float intr list) (acc : segment list)
                 x.err = (hd acc).err && 
                 (intr_adjacent x.int (hd acc).int || intr_overlap x.int (hd acc).int)
         then 
-             let com = combine_seg x (hd acc) in
+             (* let com = combine_seg x (hd acc) in *)
              merge_inner (expand_domain dom x.int)
                          (* ((seg_withouts_intr com dom) @ acc) *)
                          (combine_seg x (hd acc) :: tl acc)
@@ -138,12 +138,36 @@ and expand_domain (dom : float intr list) (i : float intr) : float intr list =
         else x :: expand_domain xs i
     | [] -> [i] ;;
 
+(* DELETE ME *)
+let str_interval (i : float interval) : string = 
+    "[" ^ Format.sprintf "%20.30f" i.l ^ 
+    " ; " ^ Format.sprintf "%20.30f" i.u ^ "]" ;;
+
+let str_intr (intr : fltIntr) : string =
+    match intr with
+    | Intr i -> str_interval i
+    | IntrErr -> "IntrErr"
+    | IntrBot -> "_|_" ;;
+
+let str_intrs (is : fltIntr list) : string =
+    fold_left (fun acc i -> acc ^ str_intr i ^ ", ") "{" is ^ "}" ;;
+
+let str_seg (seg : segment) : string =
+    "(" ^ str_intr seg.int ^ ", " ^ Format.sprintf "%20.30f" seg.err ^ ")" ;;
+
+let str_segs (segs : segment list) : string =
+    fold_left (fun acc s -> acc ^ str_seg s ^ ", ") "{" segs ^ "}" ;;
+
+let str_sf (trm : stepF) : string = 
+    match trm with
+    | StepF ies -> str_segs ies
+    | Bot       -> "_" ;;
+
 let eop (l : stepF) (r : stepF) (op : segment -> segment -> segment list) =
     match l, r with
     (* | Eterm ls, Eterm rs -> merge (Eterm (concat (product_map op ls rs))) *)
     | StepF ls, StepF rs ->
         let m = (concat (product_map op ls rs)) in
-        (* Format.printf "product_map: \n %s\n\n" (str_eterm (Eterm m)) ; *)
         Format.printf "\ncreated %d segments \n" (length m);
         (let ret = merge (StepF m) in
         Format.printf "\nmerged : %d * %d = %d into %d\n" 
