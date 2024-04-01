@@ -290,8 +290,6 @@ let intr_eq_op l r =
     let new_intr = intr_of (max_flt [l.l ; r.l]) (min_flt [l.u ; r.u]) in
     (new_intr, new_intr) ;;
 
-let intr_neq l r = (l, r) ;;
-
 
 let intr_bool_op (left : 'a intr) (right : 'a intr) 
                  (op : 'a interval -> 'a interval -> ('a intr * 'a intr)) 
@@ -385,7 +383,7 @@ let str_intr intr =
     | IntrBot -> "_|_" ;;
 
 (* Get the intervals which meets the Sterbenz condition for i *)
-let rec get_sterbenz_intr (intr : float intr) : float intr = 
+let get_sterbenz_intr (intr : float intr) : float intr = 
     match intr with
     | Intr i ->
         let mul = intr_mul intr (intr_of_int 2) in

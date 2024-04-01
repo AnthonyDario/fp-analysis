@@ -1,4 +1,3 @@
-open Printing
 open Interp
 open Parse
 open Tree
@@ -22,13 +21,6 @@ let speclist =
 
 let () = Arg.parse speclist anon_fun usage_msg ;;
 
-let printfile exp amem = 
-    let aexp = abst_stmt exp in
-    Format.printf "\n\n%s\n" (str_amem amem) ;
-    Format.printf "\n%s\n" (str_cstmt exp) ;
-    Format.printf "\n%s\n" (str_astmt aexp) ;
-    Format.printf "\n%s\n" (str_amem (abst_interp aexp amem)) ;
-    Format.printf "------------------\n" ;;
 
 (* Running the analyzer *)
 let analyze filename = 

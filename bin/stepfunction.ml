@@ -213,7 +213,7 @@ let overlap (s1: stepF) (s2: stepF) : (stepF * stepF) =
 let chop (sf : stepF) (range : float intr) 
          (comp : segment -> segment -> (segment * segment)) : stepF =
     match range with
-    | Intr r ->
+    | Intr _ ->
         (match sf with
          | StepF segs ->
                let dummy = seg_of_intr range 0.0 in

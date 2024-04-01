@@ -2,7 +2,6 @@ open Float
 open List
 
 open Interval
-open Util
 
 (* The interval-error terms.  Represents a section of the interval with an
    associated error *)
@@ -59,7 +58,7 @@ let seg_with (s1 : segment) (s2 : segment) : segment =
 let seg_with_intr (s : segment) (i : float intr) : segment option =
     let overlap = intr_with s.int i in
     match overlap with
-    | Intr i -> Some (seg_of_intr overlap s.err)
+    | Intr _ -> Some (seg_of_intr overlap s.err)
     | _ -> None ;;
     
 
