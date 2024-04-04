@@ -138,66 +138,55 @@ and expand_domain (dom : float intr list) (i : float intr) : float intr list =
         else x :: expand_domain xs i
     | [] -> [i] ;;
 
-(* DELETE ME *)
-let str_interval (i : float interval) : string = 
-    "[" ^ Format.sprintf "%20.30f" i.l ^ 
-    " ; " ^ Format.sprintf "%20.30f" i.u ^ "]" ;;
 
-let str_intr (intr : fltIntr) : string =
-    match intr with
-    | Intr i -> str_interval i
-    | IntrErr -> "IntrErr"
-    | IntrBot -> "_|_" ;;
-
-let str_intrs (is : fltIntr list) : string =
-    fold_left (fun acc i -> acc ^ str_intr i ^ ", ") "{" is ^ "}" ;;
-
-let str_seg (seg : segment) : string =
-    "(" ^ str_intr seg.int ^ ", " ^ Format.sprintf "%20.30f" seg.err ^ ")" ;;
-
-let str_segs (segs : segment list) : string =
-    fold_left (fun acc s -> acc ^ str_seg s ^ ", ") "{" segs ^ "}" ;;
-
-let str_sf (trm : stepF) : string = 
-    match trm with
-    | StepF ies -> str_segs ies
-    | Bot       -> "_" ;;
-
-let eop (l : stepF) (r : stepF) (op : segment -> segment -> segment list) =
+(* Trying merging earlier *)
+let rec eop (l : stepF) (r : stepF) 
+            (op : segment -> segment -> segment list) 
+            (prop_err_op : segment -> segment -> float)
+            : stepF =
     match l, r with
-    (* | Eterm ls, Eterm rs -> merge (Eterm (concat (product_map op ls rs))) *)
     | StepF ls, StepF rs ->
-        let m = (concat (product_map op ls rs)) in
-        Format.printf "\ncreated %d segments \n" (length m);
-        (let ret = merge (StepF m) in
-        Format.printf "\nmerged : %d * %d = %d into %d\n" 
-                      (length (get_segs l)) 
-                      (length (get_segs r)) 
-                      (length m) 
-                      (length (get_segs ret)) ; 
-        Format.print_flush();
-        ret )
-    | _, _ -> Bot ;;
+        let is = concat 
+            (product_map (fun x y -> 
+                            let perr = prop_err_op x y in
+                            (map (fun s -> {s with err = perr}) 
+                                          (op x y))) 
+                         ls rs) in
+        Format.printf "\ncreated %d segments \n" (length is);
+        let ms = merge (StepF is) in
+        let ret = concat (map (fun s -> binade_split_seg s) 
+                         (get_segs ms)) in 
+        Format.printf 
+            "\nsplit : %d * %d = %d into %d then %d\n" 
+            (length (get_segs l)) 
+            (length (get_segs r)) 
+            (length is) 
+            (length (get_segs ms))
+            (length ret) ;
+        merge (StepF ret)
+    | _, _ -> Bot
+
+(* Binade splitting on segments *)
+and binade_split_seg (s : segment) : segment list =
+    let is = split_binade s.int in
+    map (fun i -> { int = i ; err = s.err +. ulp_intr i }) is ;;
 
 let eadd (l : stepF) (r : stepF) : stepF = 
     Format.printf "eadd %d + %d\n" (length (get_segs l)) (length (get_segs r)) ;
-    Format.print_flush ();
-    eop l r seg_add ;;
+    eop l r seg_add err_add_prop ;;
 
 let esub (l : stepF) (r : stepF) : stepF = 
     Format.printf "esub %d + %d\n" (length (get_segs l)) (length (get_segs r)) ;
-    Format.print_flush ();
-    eop l r seg_sub ;;
+    eop l r seg_sub err_sub_prop ;;
 
 let emul (l : stepF) (r : stepF) : stepF = 
     Format.printf "emul %d + %d\n" (length (get_segs l)) (length (get_segs r)) ;
-    Format.print_flush ();
-    eop l r seg_mul ;;
+    eop l r seg_mul err_mul_prop ;;
 
 let ediv (l : stepF) (r : stepF) :stepF = 
     Format.printf "ediv %d + %d\n" (length (get_segs l)) (length (get_segs r)) ;
-    Format.print_flush ();
-    eop l r seg_div ;;
+    eop l r seg_div err_div_prop ;;
+
 
 (* Boolean operators *)
 (* Get overlapping portion of both step-functions *)

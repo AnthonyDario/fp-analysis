@@ -35,6 +35,7 @@ let get_segs_range (segs : segment list) : float intr list =
 let lower_bnd (s : segment) : float = lower s.int ;;
 let upper_bnd (s : segment) : float = upper s.int ;;
 
+let seg_to_intr (s : segment) : float intr = s.int ;;
 
 (* Same as intr without but maintain the error *)
 (* Remove seg2 from seg1 *)
@@ -75,56 +76,63 @@ let ulp_op (l : segment) (r : segment)
     | IntrBot, _ | _, IntrBot | IntrErr, _ | _, IntrErr-> nan ;;
 
 (* For these error functions, o is the result of the interval operation on l
- * and r *)
+ * and r.
+ *
+ * err_op_prop are the error propagation functions, for convenience.
+ *)
+let err_add_prop (l : segment) (r : segment) : float = l.err +. r.err ;;
 let err_add (l : segment) (r : segment) (o : float intr) : float = 
-    l.err +. r.err +. (ulp_intr o) ;;
+    (err_add_prop l r) +. (ulp_intr o) ;;
 
+let err_sub_prop (l : segment) (r : segment) : float = l.err +. r.err ;;
 let err_sub (l : segment) (r : segment) (o : float intr) : float = 
-    l.err +. r.err +. (ulp_intr o) ;;
+    (err_sub_prop l r) +. (ulp_intr o) ;;
 
 let err_sbenz (l : segment) (r : segment) (_ : float intr) : float = 
     l.err +. r.err ;;
 
-let err_mul (l : segment) (r : segment) (o : float intr) : float =
+let err_mul_prop (l : segment) (r : segment) : float =
     let lup = mag_lg_intr l.int in
     let rup = mag_lg_intr r.int in
-    lup *. r.err +. rup *. l.err +. l.err *. r.err +. (ulp_intr o) ;;
+    lup *. r.err +. rup *. l.err +. l.err *. r.err ;;
 
-let err_div (l : segment) (r : segment) (o : float intr) : float =
+let err_mul (l : segment) (r : segment) (o : float intr) : float =
+    (err_mul_prop l r) +. (ulp_intr o) ;;
+
+let err_div_prop (l : segment) (r : segment) : float =
     let lup = mag_lg_intr l.int in
     let rdn = mag_sm_intr r.int in
-    ((lup *. r.err +. rdn *. l.err) /. (rdn *. rdn -. rdn *. r.err)) +.  
-        (ulp_intr o) ;;
+    ((lup *. r.err +. rdn *. l.err) /. (rdn *. rdn -. rdn *. r.err)) ;;
+    
+let err_div (l : segment) (r : segment) (o : float intr) : float =
+    (err_div_prop l r) +. (ulp_intr o) ;;
 
 (* Sterbenz Lemma *)
 (* ---------------------- *)
 (* Before subtraction, find sections that meet the condition *)
 (* Find Sterbenz stuff *)
 let get_sterbenz_seg (seg : segment) : segment =
-    let sbenz = get_sterbenz_intr seg.int in
-    seg_of_intr sbenz seg.err ;;
+    seg_of_intr (get_sterbenz_intr seg.int) seg.err ;;
 
 (* Arithmetic operators *)
 (* ---------------------- *)
 let seg_op (x : segment) (y : segment) 
            (intr_op : float intr -> float intr -> float intr)
            (err_op : segment -> segment -> float intr -> float) 
-           : segment list =
+           : segment  =
     let op_out = intr_op x.int y.int in
-    let split_result = split_binade op_out in
-    map (fun i -> { int = i ; err = err_op x y i }) split_result ;;
+    { int = op_out ; err = err_op x y op_out } ;;
     
-
 let seg_add (x : segment) (y : segment) : segment list =
-    seg_op x y intr_add err_add
+    [seg_op x y intr_add err_add]
 
 (* No special cases *)
 let seg_sub_reg (x : segment) (y : segment) : segment list =
-    seg_op x y intr_sub err_sub ;;
+    [seg_op x y intr_sub err_sub] ;;
 
 (* Sterbenz *)
 let seg_sub_sbenz (x : segment) (y : segment) : segment list =
-    seg_op x y intr_sub err_sbenz ;;
+    [seg_op x y intr_sub err_sbenz] ;;
 
 let seg_sub (x : segment) (y : segment) : segment list = 
     let reg, sbenz = (seg_partition y (get_sterbenz_seg x)) in
@@ -133,10 +141,10 @@ let seg_sub (x : segment) (y : segment) : segment list =
     else seg_sub_sbenz x sbenz @ concat_map (seg_sub_reg x) reg 
 
 let seg_mul (x : segment) (y : segment) : segment list = 
-    seg_op x y intr_mul err_mul ;;
+    [seg_op x y intr_mul err_mul] ;;
 
 let seg_div (x : segment) (y : segment) : segment list = 
-    seg_op x y intr_div err_div ;;
+    [seg_op x y intr_div err_div] ;;
 
 
 (* Boolean operators *)

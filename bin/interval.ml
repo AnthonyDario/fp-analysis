@@ -163,28 +163,6 @@ let split_binade (intr : float intr) : float intr list =
             [ intr_of 0. 0. ] @
             split_binade_pos { l = pos_lb ; u = i.u })
     | _ -> ([intr]) ;;
-(*
-let split_binade (intr : float intr) : float intr list =
-    let pos_lb = pow (2.) (-5.) in
-    let neg_ub = (-.pos_lb) in
-    match intr with
-    | Intr i -> 
-        if snd (frexp i.l) = snd (frexp i.u) then [intr] else 
-        if i.l = 0. then 
-            intr_of (succ 0.) pos_lb  :: 
-            split_binade_pos {l = pos_lb ; u = i.u} else
-        if i.u = 0. then 
-            intr_of neg_ub (pred 0.) :: 
-            split_binade_neg {l = i.l ; u = neg_ub} else
-        if i.l > 0. then split_binade_pos i else 
-        if i.u < 0. then split_binade_neg i else (
-            split_binade_neg { l = i.l ; u = neg_ub } @
-            [ intr_of neg_ub pos_lb ] @
-            split_binade_pos { l = pos_lb ; u = i.u })
-    | _ -> (
-        (* (Format.printf "not Intr i\n" ; *)
-        [intr]) ;;
-        *)
 
 
 (* Arithmetic operators *)
