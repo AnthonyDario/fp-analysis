@@ -227,7 +227,8 @@ let rec abst_iter f m n =
         abst_iter f widened (n - 1) ;;
 *)
 
-let rec abst_iter f m n =
+(* iterate function f on m n times *)
+let rec abst_iter (f : amem -> amem) (m : amem) (n : int) : amem =
     if n = 0 then m else
     let next = f m in
     let widened = u_amem m next in
@@ -238,17 +239,69 @@ let rec abst_iter f m n =
 
 let comp f g x = f (g x) ;;
 
-let rec asem_stmt exp is m =
+let rec asem_stmt (exp : astmt) (iters : int) (m : amem) : amem =
     match exp with
     | AAsgn (id, e) -> amem_update (Id id) (fst (asem_aexp e m)) m 
     | AIf (c, t, e) -> 
-        u_amem (asem_stmt t is (asem_bexp c m)) 
-               (asem_stmt e is (asem_bexp (not_abexp c) m))
+        u_amem
+            (u_amem (asem_stmt t iters (asem_bexp c m)) 
+                    (asem_stmt e iters (asem_bexp (not_abexp c) m)))
+            (unstable_branch c t e iters m)
     | AFor (f, c, a, b) -> 
-        let body = comp (asem_stmt a is) 
-                        (comp (asem_stmt b is) (asem_bexp c)) in
-        asem_bexp (not_abexp c) (abst_iter body (asem_stmt f is m) is)
-    | ACol (s1, s2) -> asem_stmt s2 is (asem_stmt s1 is m) 
-    | ARet _ -> m ;;
+        let body = comp (asem_stmt a iters) 
+                        (comp (asem_stmt b iters) (asem_bexp c)) in
+        asem_bexp (not_abexp c) (abst_iter body (asem_stmt f iters m) iters)
+    | ACol (s1, s2) -> asem_stmt s2 iters (asem_stmt s1 iters m) 
+    | ARet _ -> m
+
+(* Find the unstable region of a condition *)
+(* A little bit of a hack since abst_eq computes the overlap *)
+and filter_unstable (exp : abexp) (m : amem) : amem =
+    match exp with
+    | ALt (l, r) | ALe (l, r) | AEq (l, r) | ANe (l, r) | AGe (l, r) | AGt (l, r) ->
+        let ((new_l, lid), (new_r, rid)) = abst_eq (asem_aexp l m) (asem_aexp r m) in
+        amem_update lid new_l (amem_update rid new_r m)
+
+(* find the error between the branches 
+   map each variable to a new interval based on the then branch and other things*)
+and unstable_branch (exp : abexp) (t : astmt) (e : astmt) 
+                    (i : int) (m : amem) : amem =
+    let fu = filter_unstable exp m in
+    let m1, m2 = asem_stmt t i fu, asem_stmt e i fu in
+    u_amem (fold_left (fun a x -> amem_update (Id x) (unstable_aval x m1 m2) a) amem_bot (SS.elements m1.dom)) (* then branch *)
+           (fold_left (fun a x -> amem_update (Id x) (unstable_aval x m2 m1) a) amem_bot (SS.elements m2.dom)) (* else branch *)
+
+(* What is the difference between branch m1 and branch m2? Assuming we took
+ * branch m1. *)
+and unstable_aval (x: string) (m1 : amem) (m2 : amem) : aval =
+    let { dom = _ ; lookup = m1l} = m1 in
+    let { dom = _ ; lookup = m2l} = m2 in
+    let x1, x2 = m1l x, m2l x in
+    match x1, x2 with
+    | Some av1, Some av2 -> both_branches av1 av2
+    | Some av1, None -> one_branch av1
+    | None, Some av2 -> one_branch av2
+    | None, None -> raise (UnassignedVariableException "Neither branch assigned?")
+
+(* If both branches have the value then either the error or the difference *)
+and both_branches (av1 : aval) (av2 : aval) : aval =
+    match av1, av2 with
+    | AFloat (StepF sf1), AFloat (StepF sf2) ->
+        AFloat (StepF 
+            (map (fun seg -> seg_of_intr seg.int (max_flt [seg.err ; diff_intr seg.int (range (StepF sf2))])) sf1))
+    | AFloat (StepF sf1), AFloat Bot ->
+        AFloat (StepF
+            (map (fun seg -> seg_of_intr seg.int infinity) sf1))
+    | AFloat (StepF sf1), AInt i -> 
+        AFloat (StepF
+            (map (fun seg -> seg_of_intr seg.int (max_flt [seg.err ; diff_intr seg.int (iintr_to_intr i)])) sf1))
+    | _, _ -> av1
+
+(* if the other branch doesn't have a value then our error is infinite *)
+and one_branch (a : aval) : aval =
+    match a with
+    | AFloat (StepF sf) -> 
+        AFloat (StepF (map (fun s -> seg_of_intr s.int infinity) sf))
+    | _         -> a ;;
 
 let abst_interp exp m = asem_stmt exp 20 m ;;

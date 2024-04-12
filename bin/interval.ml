@@ -111,6 +111,18 @@ let mag_sm_intr (intr : float intr) : float =
 
 let ulp_intr (i : float intr) = ulp (mag_lg_intr i) ;;
 
+(* Get the largest difference of values between two intervals *)
+let diff_interval (i1 : float interval) (i2 : float interval) : float =
+    max_flt [abs (i1.u -. i2.l) ; abs (i2.u -. i1.l)] ;;
+
+let diff_intr (i1 : float intr) (i2 : float intr) : float =
+    let ret =
+        match i1, i2 with
+        | Intr in1, Intr in2 -> diff_interval in1 in2
+        | _, _ -> nan 
+    in
+    if ret = infinity then raise (IntervalError "infinity value in diff_intr") else ret;;
+
 (* Get the floating point value of the upper bound of binade defined by
  * exponent exp *)
 let exp_to_binade (exp : int) : float = pow 2. (Float.of_int exp) ;;
