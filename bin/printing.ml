@@ -48,20 +48,20 @@ let str_interval (i : float interval) : string =
     "[" ^ Format.sprintf "%20.30f" i.l ^ 
     " ; " ^ Format.sprintf "%20.30f" i.u ^ "]" ;;
 
-let str_intr (intr : fltIntr) : string =
+let str_intr (intr : float intr) : string =
     match intr with
     | Intr i -> str_interval i
     | IntrErr -> "IntrErr"
     | IntrBot -> "_|_" ;;
 
-let str_intrs (is : fltIntr list) : string =
+let str_intrs (is : float intr list) : string =
     fold_left (fun acc i -> acc ^ str_intr i ^ ", ") "{" is ^ "}" ;;
 
 let str_iInterval (i : int interval) : string =
         "[" ^ Int.to_string i.l ^ 
         " ; " ^ Int.to_string i.u ^ "]" ;;
 
-let str_iIntr (intr : intIntr) : string =
+let str_iIntr (intr : int intr) : string =
     match intr with
     | Intr i -> str_iInterval i
     | IntrErr -> "IntrErr"

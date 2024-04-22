@@ -3,6 +3,7 @@
  */
 double determinant(double a, double b, double c, double d, double e, double f, double g, double h, double i)
 {
-	return (a * e * i + b * f * g + c * d * h) -
-	       (c * e * g + b * d * i + a * f * h);
+	double r =  (a * e * i + b * f * g + c * d * h) -
+	            (c * e * g + b * d * i + a * f * h);
+    return r;
 }

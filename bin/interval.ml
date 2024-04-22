@@ -13,16 +13,20 @@ type 'a interval = { l : 'a ; u : 'a } ;;
 
 (* Float interval *)
 type 'a intr = IntrErr | IntrBot | Intr of 'a interval ;;
-type fltIntr = float intr ;;
-type intIntr = int intr ;;
 
 (* inclusive *)
-let intr_of l u = if l > u then IntrBot else Intr {l = l ; u = u} ;;
+let intr_of (l : 'a) (u : 'a) : 'a intr =
+    if l > u then IntrBot else Intr {l = l ; u = u} ;;
 
 (* exclusive *)
-let intr_of_exc l u = if l >= u then IntrBot else Intr {l = l ; u = u} ;;
+let intr_of_exc (l : float) (u : float) : float intr = 
+    if l >= u then IntrBot else Intr {l = l ; u = u} ;;
 
-let intr_of_int i = Intr {l = Float.of_int i; u = Float.of_int i} ;;
+let intr_of_int (i : int) : float intr = 
+    Intr {l = Float.of_int i; u = Float.of_int i} ;;
+
+let iintr_of (l : int) (u : int) : int intr =
+    if l >= u then IntrBot else Intr {l = l ; u = u} ;;
 
 (* Int interval *)
 let intr_to_iintr (intr : float intr) : int intr = 
@@ -79,12 +83,12 @@ let intr_adjacent (intr1 : float intr) (intr2 : float intr) : bool =
 let lower (intr : 'a intr) = 
     match intr with
     | Intr i -> i.l
-    | _ -> nan ;;
+    | _ -> failwith "No lower bound for error interval" ;;
 
 let upper (intr : 'a intr) = 
     match intr with
     | Intr i -> i.u
-    | _ -> nan ;;
+    | _ -> failwith "No upper bound for error interval" ;;
 
 let intr_to_interval intr = 
     match intr with
@@ -115,19 +119,22 @@ let ulp_intr (i : float intr) = ulp (mag_lg_intr i) ;;
 let diff_interval (i1 : float interval) (i2 : float interval) : float =
     max_flt [abs (i1.u -. i2.l) ; abs (i2.u -. i1.l)] ;;
 
+
 let diff_intr (i1 : float intr) (i2 : float intr) : float =
     let ret =
         match i1, i2 with
         | Intr in1, Intr in2 -> diff_interval in1 in2
         | _, _ -> nan 
-    in
-    if ret = infinity then raise (IntervalError "infinity value in diff_intr") else ret;;
+    in if ret = infinity then 
+            raise (IntervalError "infinity value in diff_intr") )
+        else ret;;
 
 (* Get the floating point value of the upper bound of binade defined by
  * exponent exp *)
 let exp_to_binade (exp : int) : float = pow 2. (Float.of_int exp) ;;
 
-
+(* Splitting Intervals *)
+(* -------------------------- *)
 (* Split an interval on each binade with the lower bound being 1 ulp above the
  * previous binade .
  * 
@@ -185,12 +192,12 @@ let iintr_add_op l r = Intr { l = l.l + r.l ; u = l.u + r.u } ;;
 let iintr_sub_op l r = Intr { l = l.l - r.u ; u = l.u + r.l } ;;
 let iintr_mul_op l r = 
     let combos = [l.l * r.l ; l.l * r.u ; l.u * r.l ; l.u * r.u] in 
-    Intr { l = min_int combos ; u = max_int combos }
+    Intr { l = min_ints combos ; u = max_ints combos }
 let iintr_div_op l r = 
     if r.l < 0 && r.u > 0 
     then IntrErr
     else let combos = [l.l / r.l ; l.l / r.u ; l.u / r.l ; l.u / r.u] in 
-         Intr { l = min_int combos ; u = max_int combos } ;;
+         Intr { l = min_ints combos ; u = max_ints combos } ;;
 
 
 (* Floats *)
@@ -232,27 +239,27 @@ let intr_div l r = intr_op l r intr_div_op ;;
 (* Returns the new values of the operands *)
 (* Ints *)
 let iintr_lt_op l r = 
-    let lu = min_int [l.u ; r.u - 1] in
-    let rl = max_int [l.l + 1 ; r.l] in
+    let lu = min_ints [l.u ; r.u - 1] in
+    let rl = max_ints [l.l + 1 ; r.l] in
     (intr_of l.l lu, intr_of rl r.u) ;;
 
 let iintr_le_op l r = 
-    let lu = min_int [l.u ; r.u] in
-    let rl = max_int [l.l ; r.l] in
+    let lu = min_ints [l.u ; r.u] in
+    let rl = max_ints [l.l ; r.l] in
     (intr_of l.l lu, intr_of rl r.u) ;;
 
 let iintr_gt_op l r = 
-    let ll = max_int [l.l ; r.l + 1] in
-    let ru = min_int [r.u ; l.u - 1] in
+    let ll = max_ints [l.l ; r.l + 1] in
+    let ru = min_ints [r.u ; l.u - 1] in
     (intr_of ll l.u, intr_of r.l ru) ;;
 
 let iintr_ge_op l r = 
-    let ll = max_int [l.l ; r.l] in
-    let ru = min_int [r.u ; l.u] in
+    let ll = max_ints [l.l ; r.l] in
+    let ru = min_ints [r.u ; l.u] in
     (intr_of ll l.u, intr_of r.l ru) ;;
 
 let iintr_eq_op l r = 
-    let new_iintr = intr_of (max_int [l.l ; r.l]) (min_int [l.u ; r.u]) in
+    let new_iintr = intr_of (max_ints [l.l ; r.l]) (min_ints [l.u ; r.u]) in
     (new_iintr, new_iintr) ;;
 
 (* Floats*)
@@ -314,7 +321,7 @@ let iintr_union (iintr1 : int intr) (iintr2 : int intr) : int intr =
     | Intr ii1, Intr ii2 ->
         let { l = ii1l ; u = ii1u } = ii1 in
         let { l = ii2l ; u = ii2u } = ii2 in
-        Intr { l = min_int [ii1l ; ii2l]; u = max_int [ii1u ; ii2u] }
+        Intr { l = min_ints [ii1l ; ii2l]; u = max_ints [ii1u ; ii2u] }
     | IntrErr, _ | _, IntrErr -> IntrErr
     | IntrBot, _ | _, IntrBot -> IntrBot ;;
 
@@ -361,16 +368,6 @@ let intr_with (intr1 : float intr) (intr2 : float intr) : float intr =
 let intr_partition (i1 : float intr) (i2 : float intr) 
     : (float intr list * float intr) = 
     (intr_without i1 i2, intr_with i1 i2) ;;
-
-let str_interval i = 
-    "[" ^ Format.sprintf "%f" i.l ^ 
-    " ; " ^ Format.sprintf "%f" i.u ^ "]" ;;
-
-let str_intr intr =
-    match intr with
-    | Intr i -> str_interval i
-    | IntrErr -> "IntrErr"
-    | IntrBot -> "_|_" ;;
 
 (* Get the intervals which meets the Sterbenz condition for i *)
 let get_sterbenz_intr (intr : float intr) : float intr = 

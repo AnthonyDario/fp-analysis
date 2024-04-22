@@ -1,5 +1,6 @@
 open Float
 open List
+open Util
 
 open Interval
 
@@ -79,7 +80,7 @@ let ulp_op (l : segment) (r : segment)
  * and r.
  *
  * err_op_prop are the error propagation functions, for convenience.
- *)
+ * ---------------------------------------------------------------------- *)
 let err_add_prop (l : segment) (r : segment) : float = l.err +. r.err ;;
 let err_add (l : segment) (r : segment) (o : float intr) : float = 
     (err_add_prop l r) +. (ulp_intr o) ;;
@@ -116,23 +117,23 @@ let get_sterbenz_seg (seg : segment) : segment =
 
 (* Arithmetic operators *)
 (* ---------------------- *)
-let seg_op (x : segment) (y : segment) 
-           (intr_op : float intr -> float intr -> float intr)
+let seg_op (intr_op : float intr -> float intr -> float intr)
            (err_op : segment -> segment -> float intr -> float) 
+           (x : segment) (y : segment) 
            : segment  =
     let op_out = intr_op x.int y.int in
     { int = op_out ; err = err_op x y op_out } ;;
     
 let seg_add (x : segment) (y : segment) : segment list =
-    [seg_op x y intr_add err_add]
+    [seg_op intr_add err_add x y]
 
 (* No special cases *)
 let seg_sub_reg (x : segment) (y : segment) : segment list =
-    [seg_op x y intr_sub err_sub] ;;
+    [seg_op intr_sub err_sub x y] ;;
 
 (* Sterbenz *)
 let seg_sub_sbenz (x : segment) (y : segment) : segment list =
-    [seg_op x y intr_sub err_sbenz] ;;
+    [seg_op intr_sub err_sbenz x y] ;;
 
 let seg_sub (x : segment) (y : segment) : segment list = 
     let reg, sbenz = (seg_partition y (get_sterbenz_seg x)) in
@@ -141,10 +142,25 @@ let seg_sub (x : segment) (y : segment) : segment list =
     else seg_sub_sbenz x sbenz @ concat_map (seg_sub_reg x) reg 
 
 let seg_mul (x : segment) (y : segment) : segment list = 
-    [seg_op x y intr_mul err_mul] ;;
+    [seg_op intr_mul err_mul x y] ;;
+
 
 let seg_div (x : segment) (y : segment) : segment list = 
-    [seg_op x y intr_div err_div] ;;
+    [seg_op intr_div err_div x y] ;;
+(*
+    (* If a possible divide by 0, note it and move on *)
+    if contains y.int 0.0
+    (* We remove the section that will produce an infinite result *)
+    then 
+        let div = smallest_finite_divisor (mag_lg_intr x.int) in
+        let nonzero = seg_withouts_intr y [intr_of (-.div) div] in
+        Format.printf "div = %30.30f\n nonzero = %s\n\n" div (str_segs nonzero) ; Format.print_flush () ;
+        let ret = seg_bot :: map (seg_op intr_div err_div x) nonzero in
+        Format.printf "ret = %s\n\n" (str_segs ret); ret
+    else [seg_op intr_div err_div x y] ;;
+    *)
+
+(* TODO: End up with a segment from [min_float ; max_float] but has infinite error? *)
 
 
 (* Boolean operators *)

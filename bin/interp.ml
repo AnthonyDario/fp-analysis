@@ -59,7 +59,7 @@ let rec abst_stmt (exp : cstmt) : astmt =
 (* Abstract semantics *)
 (* --------------------------------------------------- *)
 let aval_op (l : aval) (r : aval) 
-            (iintr_op : intIntr -> intIntr -> intIntr) 
+            (iintr_op : int intr -> int intr -> int intr) 
             (sf_op : stepF -> stepF -> stepF) 
             : aval = 
     match l, r with
@@ -108,14 +108,14 @@ let abst_op (left : stepF) (right : stepF)
 
 (* Need to maintain the types of each side of the operator *)
 let abst_bool_op (l : aval * id) (r : aval * id) 
-                 (iintr_op : intIntr -> intIntr -> (intIntr * intIntr))
+                 (iintr_op : int intr -> int intr -> (int intr * int intr))
                  (sf_op : stepF -> stepF -> (stepF * stepF))
                  : ((aval * id) * (aval * id)) = 
 
     let (ltrm, lid), (rtrm, rid) = l, r in
 
     (* wrap into a tuple *)
-    let wrap_int (l, r : intIntr * intIntr) : (aval * id) * (aval * id) = 
+    let wrap_int (l, r : int intr * int intr) : (aval * id) * (aval * id) = 
         ((AInt l, lid), (AInt r, rid)) in
 
     let wrap_flt (l, r : stepF * stepF) : (aval * id) * (aval * id) =
@@ -175,63 +175,66 @@ let u_amem mem1 mem2 =
     { dom = dom3 ;
       lookup = fun x -> Some (aval_union (fail_lookup x m1) (fail_lookup x m2)) } ;;
 
-(* For loops require finding a fixpoint *)
-(* fixpoint : ('a -> 'a) -> 'a -> 'a *)
-let rec fixpoint f i = 
-    let next = f i in
-    if next = i
-    then next
-    else fixpoint f next ;;
 
-(*
-(* We don't _need_ to widen since we have a lattice of finite height (floating
-   points numbers are not infinite), however in practice it is too tall. *)
-let w_val i1 i2 =
-    match i1, i2 with
-    | { l = i1l; u = i1u }, { l = i2l; u = i2u } when i1l > i2l && i1u < i2u ->
-        { l = neg_infinity; u = infinity }
-    | { l = i1l; u = _ }, { l = i2l; u = i2u } when i1l > i2l ->
-        { l = neg_infinity; u = i2u }
-    | { l = _; u = i1u }, { l = i2l; u = i2u } when i1u < i2u ->
-        { l = i2l; u = infinity }
-    | { l = _; u = _ }, { l = i2l; u = i2u } ->
-        { l = i2l; u = i2u } ;;
+(* Widening: Note that the order of the arguments matters. *)
+(* Step Functions 
+ * widen the ends and widen each segment *)
+let rec widen_sf (sf1 : stepF) (sf2 : stepF) : stepF = 
+    match sf1, sf2 with
+    | StepF i1, StepF i2 ->
+        (sf_union
+            (sf_union
+                (if (lower (range sf2) <= lower (range sf1)) 
+                 then StepF [seg_of neg_infinity (lower (range sf1)) infinity]
+                 else Bot)
+                (if (upper (range sf2) >= upper (range sf1))
+                 then StepF [seg_of (upper (range sf1)) infinity infinity]
+                 else Bot))
+            (StepF (widen_segs sf1 sf2)))
+    | StepF _, Bot -> sf1
+    | Bot, StepF _ -> sf2
+    | Bot, Bot -> Bot
 
-let w_err e1 e2 = if e2 > e1 then infinity else e2 ;;
-let w_eterm e1 e2 = 
-    match e1, e2 with
-    | Eterm i1, Eterm i2 ->
-        Eterm { int = w_val i1.int i2.int; err = w_err i1.err i2.err }
-    | Eterm _, Bot -> e1  
-    | Bot, Eterm _ -> e2
-    | Bot, Bot -> Bot ;;
+and widen_segs (sf1 : stepF) (sf2 : stepF) : segment list =
+        map (fun s1 -> fold_left widen_seg s1 (get_segs sf2)) (get_segs sf1)
 
-(* TODO: Right now I'm sorta ignoring if x not in one of the memories.  
-   Logic is handled in w_eterm, which will probably fall over. *)
-(* w_amem : amem -> amem -> amem *)
-let w_amem mem1 mem2 =
+and widen_seg (s1 : segment) (s2 : segment) : segment =
+    if seg_overlap s1 s2 && s1.err < s2.err
+    then seg_of_intr s1.int infinity
+    else s1 ;;
+
+let widen_iintr (i1 : int intr) (i2 : int intr) : int intr =
+    let low = if (lower i1) > (lower i2) then min_int else (lower i1) in
+    let high = if (upper i1) < (upper i2) then max_int else (upper i1) in
+    iintr_of low high ;;
+
+
+let widen_aval (a1 : aval) (a2 : aval) : aval =
+    match a1, a2 with
+    | AFloat sf1, AFloat sf2 -> AFloat (widen_sf sf1 sf2)
+    | AFloat sf1, AInt i2 -> AInt (widen_iintr (sf_to_iintr sf1) i2)
+    | AInt i1, AFloat sf2 -> AInt (widen_iintr i1 (sf_to_iintr sf2))
+    | AInt i1, AInt i2 -> AInt (widen_iintr i1 i2)
+;;
+
+let widen_aval_opt (a1 : aval option) (a2 : aval option) : aval =
+    match a1, a2 with
+    | Some av1, Some av2 -> widen_aval av1 av2
+    | _, _ -> failwith "Variable dissapeared between iterations of widening";;
+
+let widen_amem (mem1 : amem) (mem2 : amem) : amem =
     let { dom = dom1 ; lookup = m1 } = mem1 in
     let { dom = dom2 ; lookup = m2 } = mem2 in
-    let dom3 = SS.union dom1 dom2 in
-    { dom = dom3 ;
-      lookup = fun x -> w_eterm (m1 x) (m2 x) } ;;
+    fold_left (fun acc x -> amem_update (Id x) 
+                                        (widen_aval_opt (acc.lookup x) (m2 x)) 
+                                        acc)
+              mem1 (SS.elements mem2.dom)
 
-(* OCaml's structural equality here _should_ work *)
-let rec abst_iter f m n = 
-    if n = 0 then m else
-    let next = f m in
-    let widened = w_amem m next in
-    if widened = m then 
-        widened
-    else
-        abst_iter f widened (n - 1) ;;
-*)
-
-(* iterate function f on m n times *)
+(* iterate with widening *)
 let rec abst_iter (f : amem -> amem) (m : amem) (n : int) : amem =
     if n = 0 then m else
     let next = f m in
-    let widened = u_amem m next in
+    let widened = widen_amem m next in
     if widened = m then 
         widened
     else

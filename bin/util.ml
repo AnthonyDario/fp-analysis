@@ -10,14 +10,18 @@ let product_map (f : 'a -> 'b -> 'c) (xs : 'a list) (ys : 'b list) : 'c list =
         map (fun y -> f x y) ys) xs in
     ret ;;
 
-let min_int l = List.fold_left Int.min Int.max_int l ;;
-let max_int l = List.fold_left Int.max Int.min_int l ;;
+let min_ints l = List.fold_left Int.min Int.max_int l ;;
+let max_ints l = List.fold_left Int.max Int.min_int l ;;
 
 let min_flt l = List.fold_left Float.min infinity l ;;
 let max_flt l = List.fold_left Float.max neg_infinity l ;;
 
 (* Ulp function *)
 let ulp f = Float.succ f -. f ;;
+
+(* Get the smallest divisor of a number that does not produce infinity *)
+let smallest_finite_divisor (f : float) : float =
+    f /. Float.max_float ;;
 
 let fail_unwrap op =
     match op with

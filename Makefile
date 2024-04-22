@@ -1,7 +1,8 @@
 all : test run
 
 run: 
-	dune exec -- analyzer c/branch-test-simple.c -f foo -sf c/branch-test-simple.spec
+	dune exec --profile release -- analyzer -f determinant c/bench/determinant3x3.c -sf c/bench/determinant3x3.spec
+	#dune exec -- analyzer c/branch-test-simple.c -f foo -sf c/branch-test-simple.spec
 	#dune exec --profile release -- analyzer -f foo c/simple-sub-test.c -sf c/simple-sub-test.spec
 	#dune exec --profile release -- analyzer -f foo c/branch-test.c -sf c/branch-test.spec
 	#dune exec --profile release -- analyzer -f sqroot c/sqrt-test.c -sf c/sqrt-test.spec
