@@ -126,7 +126,7 @@ let diff_intr (i1 : float intr) (i2 : float intr) : float =
         | Intr in1, Intr in2 -> diff_interval in1 in2
         | _, _ -> nan 
     in if ret = infinity then 
-            raise (IntervalError "infinity value in diff_intr") )
+            raise (IntervalError "infinity value in diff_intr")
         else ret;;
 
 (* Get the floating point value of the upper bound of binade defined by

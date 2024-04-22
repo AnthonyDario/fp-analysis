@@ -223,8 +223,7 @@ let widen_aval_opt (a1 : aval option) (a2 : aval option) : aval =
     | _, _ -> failwith "Variable dissapeared between iterations of widening";;
 
 let widen_amem (mem1 : amem) (mem2 : amem) : amem =
-    let { dom = dom1 ; lookup = m1 } = mem1 in
-    let { dom = dom2 ; lookup = m2 } = mem2 in
+    let { dom = _ ; lookup = m2 } = mem2 in
     fold_left (fun acc x -> amem_update (Id x) 
                                         (widen_aval_opt (acc.lookup x) (m2 x)) 
                                         acc)

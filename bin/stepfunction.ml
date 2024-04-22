@@ -152,7 +152,6 @@ let rec eop (l : stepF) (r : stepF)
                             (map (fun s -> {s with err = perr}) 
                                           (op x y))) 
                          ls rs) in
-        Format.printf "\ncreated %d segments:\n%s \n" (length is) (str_segs is);
         let ms = merge (StepF is) in
         let ret = concat (map (fun s -> binade_split_seg s) 
                          (get_segs ms)) in 
