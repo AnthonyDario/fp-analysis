@@ -32,6 +32,7 @@ let get_segs (sf : stepF) : segment list =
 
 (* This returns the domain as a list of intervals *)
 (* TODO: Where is this used? *)
+(*
 let dom (sf : stepF) : float intr list =
     let sorted = 
         sort (fun s1 s2 -> Float.compare (lower s1.int) (lower s2.int)) 
@@ -45,7 +46,7 @@ let dom (sf : stepF) : float intr list =
                 else s.int :: acc)
             [x.int] xs
     | [] -> [] ;;
-    
+    *)
 
 let sf_append (sf : stepF) (segs : segment list) = 
     match sf with
@@ -62,6 +63,24 @@ let iintr_to_sf (ii : int intr) =
     match ii with
     | Intr i -> StepF [seg_of (Float.of_int i.l) (Float.of_int i.u) 0.0]
     | _ -> Bot ;;
+
+(* Get the segment with the smallest lower bound *)
+let low_seg (sf : stepF) : segment = 
+    match sf with
+    | StepF segs ->
+        fold_left (fun s acc -> if lower s.int < lower acc.int then s else acc) 
+                  (seg_of infinity infinity infinity)
+                  segs
+    | _ -> failwith "attempting to get lower segment of an error value";;
+
+(* Get the segment with the largest upper bound *)
+let high_seg (sf : stepF) : segment = 
+    match sf with
+    | StepF segs ->
+        fold_left (fun s acc -> if upper s.int > lower acc.int then s else acc) 
+                  (seg_of neg_infinity neg_infinity infinity)
+                  segs
+    | _ -> failwith "attempting to get upper segment of an error value";;
 
 
 (* Arithmetic operators *)

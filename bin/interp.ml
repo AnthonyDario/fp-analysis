@@ -176,12 +176,15 @@ let u_amem mem1 mem2 =
       lookup = fun x -> Some (aval_union (fail_lookup x m1) (fail_lookup x m2)) } ;;
 
 
-(* Widening: Note that the order of the arguments matters. *)
+(* Widening and Narrowing 
+ * Note that the order of the arguments matters.
+ * ------------------------- *)
+
 (* Step Functions 
  * widen the ends and widen each segment *)
 let rec widen_sf (sf1 : stepF) (sf2 : stepF) : stepF = 
     match sf1, sf2 with
-    | StepF i1, StepF i2 ->
+    | StepF _, StepF _ ->
         (sf_union
             (sf_union
                 (if (lower (range sf2) <= lower (range sf1)) 
@@ -203,31 +206,84 @@ and widen_seg (s1 : segment) (s2 : segment) : segment =
     then seg_of_intr s1.int infinity
     else s1 ;;
 
+let rec narrow_sf (sf1 : stepF) (sf2 : stepF) : stepF =
+    match sf1, sf2 with
+    | StepF _, StepF _ ->
+        (sf_union
+            (sf_union
+                (if (lower (range sf1) = neg_infinity)
+                 then StepF [low_seg sf2] 
+                 else Bot)
+                (if (upper (range sf1) = infinity)
+                 then StepF [high_seg sf2]
+                 else Bot))
+            (StepF (narrow_segs sf1 sf2)))
+    | StepF _, Bot -> sf1
+    | Bot, StepF _ -> sf2
+    | Bot, Bot -> Bot
+
+and narrow_segs (sf1 : stepF) (sf2 : stepF) : segment list =
+    let non_inf = fun s1 -> lower s1.int != neg_infinity &&
+                            upper s1.int != infinity && 
+                            s1.err = infinity in
+    let candidates = (filter non_inf (get_segs sf1)) in
+    map (fun s1 -> fold_left narrow_seg s1 (get_segs sf2)) candidates
+
+and narrow_seg (s1 : segment) (s2 : segment) : segment =
+    if seg_overlap s1 s2
+    then seg_of_intr s1.int s2.err
+    else s1 ;;
+
 let widen_iintr (i1 : int intr) (i2 : int intr) : int intr =
     let low = if (lower i1) > (lower i2) then min_int else (lower i1) in
     let high = if (upper i1) < (upper i2) then max_int else (upper i1) in
     iintr_of low high ;;
 
+let narrow_iintr (i1 : int intr) (i2 : int intr) : int intr =
+    let low = if lower i1 = min_int then lower i2 else lower i1 in
+    let high = if upper i1 = max_int then upper i2 else upper i1 in
+    iintr_of low high ;;
+
+let itr_op_aval (a1 : aval) (a2 : aval) 
+                (sf_op : stepF -> stepF -> stepF) 
+                (iintr_op : int intr -> int intr -> int intr) : aval =
+    match a1, a2 with
+    | AFloat sf1, AFloat sf2 -> AFloat (sf_op sf1 sf2)
+    | AFloat sf1, AInt i2 -> AInt (iintr_op (sf_to_iintr sf1) i2)
+    | AInt i1, AFloat sf2 -> AInt (iintr_op i1 (sf_to_iintr sf2))
+    | AInt i1, AInt i2 -> AInt (iintr_op i1 i2) ;;
 
 let widen_aval (a1 : aval) (a2 : aval) : aval =
+    itr_op_aval a1 a2 widen_sf widen_iintr ;;
+
+let narrow_aval (a1 : aval) (a2 : aval) : aval =
+    itr_op_aval a1 a2 narrow_sf narrow_iintr ;;
+
+let aval_opt_op (a1 : aval option) (a2 : aval option) 
+                (op : aval -> aval -> aval) : aval  =
     match a1, a2 with
-    | AFloat sf1, AFloat sf2 -> AFloat (widen_sf sf1 sf2)
-    | AFloat sf1, AInt i2 -> AInt (widen_iintr (sf_to_iintr sf1) i2)
-    | AInt i1, AFloat sf2 -> AInt (widen_iintr i1 (sf_to_iintr sf2))
-    | AInt i1, AInt i2 -> AInt (widen_iintr i1 i2)
-;;
+    | Some av1, Some av2 -> op av1 av2
+    | _, _ -> failwith "Variable disappeared between iterations";;
 
 let widen_aval_opt (a1 : aval option) (a2 : aval option) : aval =
-    match a1, a2 with
-    | Some av1, Some av2 -> widen_aval av1 av2
-    | _, _ -> failwith "Variable dissapeared between iterations of widening";;
+    aval_opt_op a1 a2 widen_aval ;;
 
-let widen_amem (mem1 : amem) (mem2 : amem) : amem =
+let narrow_aval_opt (a1 : aval option) (a2 : aval option) : aval =
+    aval_opt_op a1 a2 narrow_aval ;;
+
+let amem_op (mem1 : amem) (mem2 : amem) 
+            (op : aval option -> aval option -> aval) : amem =
     let { dom = _ ; lookup = m2 } = mem2 in
     fold_left (fun acc x -> amem_update (Id x) 
-                                        (widen_aval_opt (acc.lookup x) (m2 x)) 
+                                        (op (acc.lookup x) (m2 x)) 
                                         acc)
-              mem1 (SS.elements mem2.dom)
+              mem1 (SS.elements mem2.dom) ;;
+
+let widen_amem (mem1 : amem) (mem2 : amem) : amem =
+    amem_op mem1 mem2 widen_aval_opt ;;
+
+let rec narrow_amem (mem1 : amem) (mem2 : amem) : amem =
+    amem_op mem1 mem2 narrow_aval_opt ;;
 
 (* iterate with widening *)
 let rec abst_iter (f : amem -> amem) (m : amem) (n : int) : amem =
