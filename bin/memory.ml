@@ -1,4 +1,5 @@
 open List
+open Hashtbl
 
 open Segment
 open Stepfunction
@@ -15,15 +16,16 @@ exception UndefinedVariableException of string ;;
 (* Memory modeled as a function.  The domain is tracked. *)
 type amem = {
     dom : SS.t ;
-    lookup : string -> aval option
+    tbl : (string, aval) Hashtbl.t ;
 }
 
-let fail_lookup (x : string) (m : string -> aval option) = 
-    match m x with
+let fail_lookup (x : string) (m : (string, aval) Hashtbl.t) = 
+    match Hashtbl.find_opt m x with
     | Some v -> v
     | None -> raise (UndefinedVariableException (x ^ " Is not assigned")) ;;
 
-let amem_bot = { dom = SS.empty ; lookup = fun _ -> None } ;;
+let amem_bot = { dom = SS.empty ; tbl = Hashtbl.create 5000 }
+let lookup (m : amem) (x : string) : aval option = Hashtbl.find_opt m.tbl x ;;
 
 (* ___________________________________ *)
 let str_interval (i : float interval) : string = 
@@ -76,32 +78,31 @@ let str_id (id : id) : string =
 (* ___________________________________ *)
 
 let rec amem_update (n : id) (v : aval) (m : amem) : amem = 
-    Format.printf "amem_update %s\n" (str_id n);
-    let { dom = mdom ; lookup = look } = m in
+    Format.printf "amem_update %s with %s\n" (str_id n) (str_aval v);
+    let { dom = mdom ; tbl = tbl } = m in
     match n with 
     | Id id -> 
+        Hashtbl.replace tbl id v ;
         { dom = SS.add id mdom ; 
-          lookup = fun x -> if id = x then Some v else look x }
+          tbl = tbl }
     | ArrElem (id, idxs) -> (
         Format.printf "ArrElem: %s[%s]\n" id (str_iIntr idxs) ;
-        match look id with
+        match lookup m id with
         | Some (AArr (arr, l)) -> (
             Format.printf "amem_update ArrElem (Some)\n" ;
             Format.print_flush () ;
-            let updated = Some (AArr ((arr_update arr idxs v), update_len l idxs)) in
+            let updated = AArr ((arr_update arr idxs v), update_len l idxs) in
+            Hashtbl.replace tbl id updated ;
             { dom = SS.add id mdom ; 
-              lookup = fun x -> if id = x 
-                                then updated
-                                else look x }
+              tbl = tbl }
             )
         | None -> (
             Format.printf "amem_update ArrElem (None)\n" ; 
             Format.print_flush() ;
-            let updated = Some (AArr ((arr_update arr_bot idxs v), (upper idxs) + 1)) in
+            let updated = AArr ((arr_update arr_bot idxs v), (upper idxs) + 1) in
+            Hashtbl.replace tbl id updated ;
             { dom = SS.add id mdom ;
-              lookup = fun x -> if id = x
-                                then updated
-                                else look x}
+              tbl = tbl }
                 )
         | Some av -> failwith ("Attempting to index a non-array: " ^ str_aval av))
     | Const -> m 
@@ -111,13 +112,12 @@ and update_len (l : int) (itr : int intr) : int =
 
 (* amem_contains : amem -> string -> bool *)
 let amem_contains m n = 
-    let { dom = _ ; lookup = look } = m in
-    match look n with
+    match lookup m n with
     | None -> false
     | _   -> true ;;
 
 let amem_eq (m1 : amem) (m2 : amem) : bool =
     m1.dom = m2.dom && 
-    fold_left (fun acc x -> acc && (m1.lookup x) = (m2.lookup x))
+    fold_left (fun acc x -> acc && (lookup m1 x) = (lookup m2 x))
               true 
               (SS.elements m1.dom) ;;

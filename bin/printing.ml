@@ -140,7 +140,7 @@ let rec str_astmt (stmt : astmt) : string =
     | ARet aexp -> "return " ^ str_aaexp aexp ^ ";" ;;
 
 let str_avar (n : string) (amem : amem) : string = 
-    match amem.lookup n with
+    match lookup amem n with
     | Some av -> n ^ " -> " ^ str_aval av
     | None -> n ^ " -> _" ;;
     (*
@@ -192,7 +192,7 @@ let csv_sf (name : string) (trm : stepF) : string =
     | Bot       -> name ^ ",flt,Bot,Bot,0.0" ;;
 
 let csv_avar (n : string) (amem : amem) : string = 
-    match amem.lookup n with
+    match lookup amem n with
     | Some (AInt ii)    -> n ^ ",int," ^ csv_iIntr ii
     | Some (AFloat et)  -> csv_sf n et
     | Some (AArr (_,_)) -> n ^ ",arr,low,high,err"

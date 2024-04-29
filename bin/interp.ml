@@ -84,17 +84,16 @@ let aval_op (l : aval) (r : aval)
 (* Arithmetic Expressions *)
 (* --------------------------------------------------- *)
 let rec asem_aexp (exp : aaexp) (mem : amem) : (aval * id) =
-    let { dom = _ ; lookup = m } = mem in
     match exp with
     | AVal e      -> 
         (e, Const)
     | AVar (n, _) -> (
-        match m n with
+        match lookup mem n with
         | Some v -> (v, Id n)
         | None -> raise (UnassignedVariableException n))
     | AAcc (n, i, _) -> (
         let index = Option.map (fun x -> fst @@ asem_aexp x mem) i in
-        match m n with
+        match lookup mem n with
         | Some (AArr (a,_)) -> (index_array a index, ArrElem (n, extract_index i mem))
         | Some v -> raise (InvalidAccessException 
                            ("Attempting to access non-array (" ^ n ^ 
@@ -123,7 +122,8 @@ and index_array (a : arr) (inter : aval option) : aval =
     | Some (AInt i) -> (
         (* Get the union of all possible values for the index *)
         match iintr_range i with
-        | i :: is -> fold_left (fun acc j -> aval_union acc (Option.get (a j))) (Option.get (a i)) is
+        | i :: is -> fold_left (fun acc j -> aval_union acc (Option.get (a j))) 
+                               (Option.get (a i)) is
         | [] -> raise (InvalidAccessException 
                        "Attempting to index array with empty interval"))
     | _ -> raise (InvalidAccessException 
@@ -188,7 +188,7 @@ let abst_neq = abst_bool_op iintr_neq sf_neq ;;
 (* Abstract Semantics of boolean expressions *)
 (* --------------------------------------------------- *)
 let asem_bexp (exp : abexp) (m : amem) : amem =
-    Format.printf "asem_bexp\n" ;
+    Format.printf "asem_bexp %s\n" (str_abexp exp) ;
     match exp with
     | ALt (l, r) -> 
         let ((new_l, lid), (new_r, rid)) = abst_lt (asem_aexp l m) (asem_aexp r m) in
@@ -210,15 +210,16 @@ let asem_bexp (exp : abexp) (m : amem) : amem =
 (* u_mem : amem -> amem -> amem *)
 let u_amem mem1 mem2 = 
     Format.printf "u_amem\n" ;
-    let { dom = dom1 ; lookup = m1 } = mem1 in
-    let { dom = dom2 ; lookup = m2 } = mem2 in
+    let { dom = dom1 ; tbl = m1 } = mem1 in
+    let { dom = dom2 ; tbl = m2 } = mem2 in
     let dom3 = SS.union dom1 dom2 in
-    let updated = 
-        map (fun x -> (x, Some (aval_union (fail_lookup x m1) 
-                                           (fail_lookup x m2))))
-            (SS.elements dom3) in
+    iter (fun x -> Hashtbl.replace m1 
+                                   x 
+                                   (aval_union (fail_lookup x m1)
+                                               (fail_lookup x m2)))
+         (SS.elements dom3) ;
     { dom = dom3 ;
-      lookup = fun x -> assoc x updated} ;;
+      tbl = m1 } ;;
 
 
 (* Widening and Narrowing 
@@ -321,9 +322,9 @@ let narrow_aval_opt (a1 : aval option) (a2 : aval option) : aval =
 
 let amem_op (mem1 : amem) (mem2 : amem) 
             (op : aval option -> aval option -> aval) : amem =
-    let { dom = _ ; lookup = m2 } = mem2 in
     fold_left (fun acc x -> amem_update (Id x) 
-                                        (op (acc.lookup x) (m2 x)) 
+                                        (op (lookup acc x) 
+                                            (lookup mem2 x)) 
                                         acc)
               mem1 (SS.elements mem2.dom) ;;
 
@@ -398,9 +399,7 @@ and unstable_branch (exp : abexp) (t : astmt) (e : astmt)
 (* What is the difference between branch m1 and branch m2? Assuming we took
  * branch m1. *)
 and unstable_aval (x: string) (m1 : amem) (m2 : amem) : aval =
-    let { dom = _ ; lookup = m1l} = m1 in
-    let { dom = _ ; lookup = m2l} = m2 in
-    let x1, x2 = m1l x, m2l x in
+    let x1, x2 = lookup m1 x, lookup m2 x in
     match x1, x2 with
     | Some av1, Some av2 -> both_branches av1 av2
     | Some av1, None -> one_branch av1
