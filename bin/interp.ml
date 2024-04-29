@@ -284,9 +284,15 @@ and narrow_seg (s1 : segment) (s2 : segment) : segment =
     else s1 ;;
 
 let widen_iintr (i1 : int intr) (i2 : int intr) : int intr =
-    let low = if (lower i1) > (lower i2) then min_int else (lower i1) in
-    let high = if (upper i1) < (upper i2) then max_int else (upper i1) in
-    iintr_of low high ;;
+    match i1, i2 with
+    | Intr ii1, Intr ii2 ->
+        let low = if ii1.l > ii2.l then min_int else ii1.l in
+        let high = if ii1.u < ii2.u then max_int else ii1.u in
+        iintr_of low high 
+    | IntrBot, Intr _ -> iintr_of min_int max_int 
+    | Intr _, IntrBot -> i1 
+    | IntrBot, IntrBot -> IntrBot
+    | IntrErr, _ | _, IntrErr -> IntrErr ;;
 
 let narrow_iintr (i1 : int intr) (i2 : int intr) : int intr =
     let low = if lower i1 = min_int then lower i2 else lower i1 in
@@ -308,6 +314,7 @@ let rec itr_op_aval (sf_op : stepF -> stepF -> stepF)
 
 
 let widen_aval (a1 : aval) (a2 : aval) : aval =
+    Format.printf "widen_aval\n" ;
     itr_op_aval widen_sf widen_iintr a1 a2 ;;
 
 let narrow_aval (a1 : aval) (a2 : aval) : aval =

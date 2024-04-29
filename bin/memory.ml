@@ -1,5 +1,4 @@
 open List
-open Hashtbl
 
 open Segment
 open Stepfunction
@@ -9,7 +8,7 @@ open Tree
 (* Abstract Memory *)
 type id = Id of string | ArrElem of string * int intr | Const ;;
 
-module SS = Set.Make(string) ;;
+module SS = Set.Make(String) ;;
 
 exception UndefinedVariableException of string ;;
 

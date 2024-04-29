@@ -151,7 +151,7 @@ let rec apply (f : aval -> aval -> aval)
     Format.printf "apply ___ %s \n%s\n\n" (str_aval (AArr (a1,l1))) 
                                           (str_aval (AArr (a2, l2))) ;
                                           *)
-    let (long, long_l), (short, short_l) = 
+    let (long, long_l), (_, short_l) = 
         if l1 < l2 
         then ((a2, l2), (a1, l1))
         else ((a1, l1), (a2, l2)) in
