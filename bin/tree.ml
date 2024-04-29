@@ -3,6 +3,7 @@ open Stepfunction
 
 open Segment
 open List
+open Util
 
 (* Concrete Domain *)
 type ctyp = IntTyp | FloatTyp | ArrTyp of ctyp ;;
@@ -49,8 +50,9 @@ type aval =
     | AInt   of int intr
     | AFloat of stepF 
     | AArr   of arr * int
+    | ABot
 
-and arr = int -> aval option ;;
+and arr = (int, aval) Hashtbl.t ;;
 
 type aaexp =
     | AVal of aval
@@ -127,27 +129,38 @@ let rec str_aval (v : aval) : string =
     | AInt i      -> str_iIntr i
     | AFloat Bot  -> "_|_"
     | AFloat trm  -> str_sf trm 
-    | AArr (f, l) -> 
-        (fold_left (fun acc i -> acc ^ (Int.to_string i) ^ " : " ^ str_aval (Option.get (f i)) ^ ", ")
+    | AArr (ar, l) -> 
+        (fold_left (fun acc i -> acc ^ (Int.to_string i) ^ " : " ^ 
+                                 str_aval (Option.get (Hashtbl.find_opt ar i)) ^
+                                 ", ")
                    ("[")
-                   (init l (fun x -> x))) ^ "] (" ^ Int.to_string l ^ ")" ;;
+                   (int_seq l)) ^ "] (" ^ Int.to_string l ^ ")" 
+    | ABot -> "ABot" ;;
 (* -------------------------- *)
 (* Working with Arrays *)
 
-let arr_bot = fun _ -> None ;;
+let arr_bot () : (int, aval) Hashtbl.t = Hashtbl.create 5000 ;;
 
 (* Apply a function piecewise to the elements of a1 and a2 for the length of
    the shorter list.  All elements in the longer list remain unchanged *)
 let rec apply (f : aval -> aval -> aval)
               (a1 : arr) (l1 : int)
               (a2 : arr) (l2 : int) : aval =
+    Format.printf "apply\n";
               (*
     Format.printf "apply ___ %s \n%s\n\n" (str_aval (AArr (a1,l1))) 
                                           (str_aval (AArr (a2, l2))) ;
                                           *)
-    if l1 < l2
-    then AArr ((fun i -> if i < l1 then map2 f (a1 i) (a2 i) else a2 i), l2)
-    else AArr ((fun i -> if i < l2 then map2 f (a2 i) (a1 i) else a1 i), l1)
+    let (long, long_l), (short, short_l) = 
+        if l1 < l2 
+        then ((a2, l2), (a1, l1))
+        else ((a1, l1), (a2, l2)) in
+    iter (fun i -> match map2 f (Hashtbl.find_opt a1 i) 
+                                (Hashtbl.find_opt a2 i) with
+                   | Some av -> Hashtbl.replace long i av
+                   | None    -> ())
+         (int_seq short_l) ;
+    AArr (long, long_l)
 
 and map2 (f : 'a -> 'b -> 'c) (a : 'a option) (b : 'b option) : 'c option =
     match a, b with
@@ -156,6 +169,10 @@ and map2 (f : 'a -> 'b -> 'c) (a : 'a option) (b : 'b option) : 'c option =
 
 
 let rec aval_union (av1 : aval) (av2 : aval) : aval = 
+    Format.printf "aval_union %s %s\n" (str_aval av1) (str_aval av2);
+    (* Format.printf "aval_union \n"; *)
+    Format.print_flush () ;
+    (* input_line stdin; *)
     match av1, av2 with
     | AInt ii1, AInt ii2     -> AInt (iintr_union ii1 ii2)
     | AInt ii, AFloat et     -> AInt (iintr_union ii (sf_to_iintr et))
@@ -163,22 +180,25 @@ let rec aval_union (av1 : aval) (av2 : aval) : aval =
     | AFloat et1, AFloat et2 -> AFloat (sf_union et1 et2) 
     | AArr (a1, l1), AArr (a2, l2) -> (
         (* Format.printf "aval_union AArrs %s \nU\n %s\n" (str_aval av1) (str_aval av2) ; *)
-        Format.printf "aval_union AArrs \n" ;
+        Format.printf "aval_union AArrs %d %d\n" l1 l2 ;
         Format.print_flush () ;
         (* input_line stdin ; *)
         apply aval_union a1 l1 a2 l2
         )
-    | AArr _, _ | _, AArr _  -> failwith "union of array and number" ;;
+    | AArr _, _ | _, AArr _  -> failwith "union of array and number" 
+    | ABot, _ -> av2
+    | _, ABot -> av1 ;;
 
 
 let arr_update (a1 : arr) (idxs : int intr) (v : aval) : arr =
     Format.printf "arr_update index %s with %s \n" (str_iIntr idxs) (str_aval v) ;
     Format.print_flush () ;
-    let updated = map (fun i -> match a1 i with
-                                | Some av -> (Format.printf "arr_update forced";
-                                              Some (aval_union v av))
-                                | None    -> Some v) (iintr_range idxs) in
-    (fun i -> if contains idxs i 
-              then nth updated (i - (lower idxs))
-              else a1 i) ;;
+    (* For each element in the index 
+       Update the index with the union if it is there 
+       If not then just return the thing *)
+    List.iter (fun i -> match Hashtbl.find_opt a1 i with
+                        | Some av -> Hashtbl.replace a1 i (aval_union v av)
+                        | None -> Hashtbl.replace a1 i v) 
+              (iintr_range idxs);
+    a1 ;;
 

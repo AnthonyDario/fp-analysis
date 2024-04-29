@@ -75,8 +75,6 @@ let intr_adjacent (intr1 : float intr) (intr2 : float intr) : bool =
     match intr1, intr2 with
     | Intr i1, Intr i2 ->
         i1.l = i2.u +. ulp(i2.u) ||
-        (*i1.l = i2.u -. ulp(i2.u) || *)
-        (*i1.u = i2.l +. ulp(i2.l) || *)
         i1.u = i2.l -. ulp(i2.l)
     | IntrBot, _ | _, IntrBot | IntrErr, _ | _, IntrErr -> false ;;
 

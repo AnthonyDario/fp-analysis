@@ -87,7 +87,6 @@ let str_sf (trm : stepF) : string =
     | StepF ies -> str_segs ies
     | Bot       -> "_" ;;
 
-
 let str_id (id : id) : string = 
     match id with
     | Id n -> n
@@ -99,14 +98,12 @@ let rec str_aval (v : aval) : string =
     | AInt i      -> str_iIntr i
     | AFloat Bot  -> "_|_"
     | AFloat trm  -> str_sf trm 
-    | AArr (f, l) -> 
-        (fold_left (fun acc i -> acc ^ (Int.to_string i) ^ " : " ^ str_aval (Option.get (f i)) ^ ", ")
+    | AArr (tbl, l) -> 
+        (fold_left (fun acc i -> acc ^ (Int.to_string i) ^ " : " ^ 
+                                 str_aval (Hashtbl.find tbl i) ^ ", ")
                    ("[")
-                   (init l (fun x -> x))) ^ "] (" ^ Int.to_string l ^ ")" ;;
-    (*
-    | AIntArr a   -> "int[]"
-    | AFloatArr a -> "float[]" ;;
-    *)
+                   (init l (fun x -> x))) ^ "] (" ^ Int.to_string l ^ ")" 
+    | ABot -> "ABot" ;;
 
 let rec str_aaexp (exp : aaexp) : string = 
     match exp with
@@ -143,15 +140,6 @@ let str_avar (n : string) (amem : amem) : string =
     match lookup amem n with
     | Some av -> n ^ " -> " ^ str_aval av
     | None -> n ^ " -> _" ;;
-    (*
-    | Some (AInt ii)     -> n ^ " -> " ^ str_iIntr ii
-    | Some (AFloat et)   -> n ^ " -> " ^ str_sf et
-    | Some (AArr (_, _)) -> n ^ " -> " ^ "AArr"
-    (*
-    | Some (AFloatArr a) -> n ^ " -> " ^ "float[]"
-    | Some (AIntArr a)   -> n ^ " -> " ^ "int[]"
-    *)
-    *)
 
 let str_amem (amem : amem) : string =
     Format.printf "str_amem\n" ;
@@ -196,10 +184,7 @@ let csv_avar (n : string) (amem : amem) : string =
     | Some (AInt ii)    -> n ^ ",int," ^ csv_iIntr ii
     | Some (AFloat et)  -> csv_sf n et
     | Some (AArr (_,_)) -> n ^ ",arr,low,high,err"
-    (*
-    | Some (AIntArr a)   -> n ^ ",int[],low,high,err"
-    | Some (AFloatArr a) -> n ^ ",float[],low,high.err"
-    *)
+    | Some ABot         -> n ^ ",bot,-,-,-"
     | None -> n ^ " -> _" ;;
 
 let csv_amem (amem : amem) : string =

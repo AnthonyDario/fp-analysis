@@ -47,3 +47,6 @@ let map_opt (f : 'a -> 'b) (x : 'a option) (default : 'b) : 'b =
     match x with
     | Some v -> f v
     | None   -> default ;;
+
+(* Create a list of sequential numbers of length l starting from 0 *)
+let int_seq l = List.init l (fun x -> x) ;;

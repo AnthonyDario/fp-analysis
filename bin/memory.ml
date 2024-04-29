@@ -9,7 +9,7 @@ open Tree
 (* Abstract Memory *)
 type id = Id of string | ArrElem of string * int intr | Const ;;
 
-module SS = Set.Make(String) ;;
+module SS = Set.Make(string) ;;
 
 exception UndefinedVariableException of string ;;
 
@@ -67,11 +67,12 @@ let str_aval (v : aval) : string =
     | AInt i      -> str_iIntr i
     | AFloat Bot  -> "_|_"
     | AFloat trm  -> str_sf trm 
-    | AArr (_, _) -> "AArr" ;;
+    | AArr (_, _) -> "AArr" 
+    | ABot        -> "ABot" ;;
 
 let str_id (id : id) : string = 
     match id with
-    | Id n -> n
+    | Id n -> "ID(" ^ n ^ ")"
     | Const -> "Const" 
     | ArrElem (n, idxs) -> n ^ "[" ^ str_iIntr idxs ^ "]" ;;
 
@@ -99,7 +100,7 @@ let rec amem_update (n : id) (v : aval) (m : amem) : amem =
         | None -> (
             Format.printf "amem_update ArrElem (None)\n" ; 
             Format.print_flush() ;
-            let updated = AArr ((arr_update arr_bot idxs v), (upper idxs) + 1) in
+            let updated = AArr ((arr_update (arr_bot ()) idxs v), (upper idxs) + 1) in
             Hashtbl.replace tbl id updated ;
             { dom = SS.add id mdom ;
               tbl = tbl }

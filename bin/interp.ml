@@ -27,11 +27,11 @@ let rec abst_val (v : cval) : aval =
     match v with
     | CInt i     -> AInt (Intr { l = i ; u = i })
     | CFloat f   -> AFloat (StepF [abst_flt f]) 
-    | CArr (a,l) -> AArr ((fun i -> Some (abst_val (a i))), l) ;;
-    (*
-    | CIntArr a   -> AIntArr (fun i -> abst_val (a i))
-    | CFloatArr a -> AFloatArr (fun i -> avst_val (a i)) ;;
-    *)
+    | CArr (a,l) -> 
+        let new_tbl = arr_bot () in
+        List.iter (fun i -> Hashtbl.replace new_tbl i (abst_val (a i))) 
+                  (int_seq l) ;
+        AArr (new_tbl, l) ;;
 
 let rec abst_aexp (exp : caexp) : aaexp = 
     match exp with
@@ -77,8 +77,8 @@ let aval_op (l : aval) (r : aval)
     | AInt ii, AFloat et | AFloat et, AInt ii -> 
         AInt (iintr_op ii (sf_to_iintr et))
     | AFloat et1, AFloat et2 -> AFloat (sf_op et1 et2)
-    | AArr _, _ -> failwith "cannot do arithmetic on arrays"
-    | _, AArr _ -> failwith "cannot do arithmetic on arrays"
+    | AArr _, _ | _, AArr _ -> failwith "cannot do arithmetic on arrays"
+    | ABot, _ | _, ABot -> ABot
     ;;
 
 (* Arithmetic Expressions *)
@@ -122,10 +122,9 @@ and index_array (a : arr) (inter : aval option) : aval =
     | Some (AInt i) -> (
         (* Get the union of all possible values for the index *)
         match iintr_range i with
-        | i :: is -> fold_left (fun acc j -> aval_union acc (Option.get (a j))) 
-                               (Option.get (a i)) is
-        | [] -> raise (InvalidAccessException 
-                       "Attempting to index array with empty interval"))
+        | i :: is -> fold_left (fun acc j -> aval_union acc (Hashtbl.find a j)) 
+                               (Hashtbl.find a i) is
+        | [] -> ABot)
     | _ -> raise (InvalidAccessException 
                   "Attempting to index an array with something other than an int") 
 
@@ -174,8 +173,12 @@ let abst_bool_op (iintr_op : int intr -> int intr -> (int intr * int intr))
     | AFloat sf, AInt ii -> 
         ((AFloat (fst (sf_op sf (iintr_to_sf ii))), lid),
          (AInt (snd (iintr_op (sf_to_iintr sf) ii)), rid))
-    | AArr _, _ -> failwith "cannot compare arrays"
-    | _, AArr _ -> failwith "cannot compare arrays"
+    | AArr _, _ | _, AArr _ -> failwith "cannot compare arrays"
+    | ABot , AFloat sf2 -> wrap_flt (abst_op Bot sf2 sf_op)
+    | AFloat sf1 , ABot -> wrap_flt (abst_op sf1 Bot sf_op)
+    | ABot, AInt ii2 -> wrap_int (iintr_op IntrBot ii2)
+    | AInt ii1, ABot -> wrap_int (iintr_op ii1 IntrBot)
+    | ABot, ABot ->  ((ABot, lid), (ABot, rid))
     ;;
 
 let abst_lt = abst_bool_op iintr_lt sf_lt ;;
@@ -299,7 +302,9 @@ let rec itr_op_aval (sf_op : stepF -> stepF -> stepF)
     | AInt i1, AFloat sf2 -> AInt (iintr_op i1 (sf_to_iintr sf2))
     | AInt i1, AInt i2 -> AInt (iintr_op i1 i2) 
     | AArr (a1, l1), AArr (a2, l2) -> apply (itr_op_aval sf_op iintr_op) a1 l1 a2 l2 
-    | AArr _, _ | _, AArr _ -> failwith "Variable type changed between iterations" ;;
+    | AArr _, _ | _, AArr _ -> failwith "Variable type changed between iterations"
+    | ABot, _ -> av2
+    | _, ABot -> av1;;
 
 
 let widen_aval (a1 : aval) (a2 : aval) : aval =
@@ -322,7 +327,7 @@ let narrow_aval_opt (a1 : aval option) (a2 : aval option) : aval =
 
 let amem_op (mem1 : amem) (mem2 : amem) 
             (op : aval option -> aval option -> aval) : amem =
-    fold_left (fun acc x -> amem_update (Id x) 
+    fold_left (fun acc x -> amem_update (Id x)
                                         (op (lookup acc x) 
                                             (lookup mem2 x)) 
                                         acc)
@@ -349,6 +354,7 @@ and abst_iter_w (f : amem -> amem) (m : amem) : amem =
     Format.printf "abst_iter_w\n" ;
     let next = f m in
     let widened = widen_amem m next in
+    Format.printf "widened\n" ;
     if amem_eq widened m 
     then widened
     else (
