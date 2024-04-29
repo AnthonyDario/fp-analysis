@@ -64,15 +64,17 @@ let rec transform_arith_binop op l r =
     | LOr ->
     *)
     
-and transform_aexp e =
+and transform_aexp (e : exp) : caexp =
     match e with
     | Cil.Const c ->
         transform_const c
     | BinOp (op, l, r, _) ->
         transform_arith_binop op l r
-    | Lval lv -> 
-        let v = transform_lval lv in
-        CVar (fst v, snd v)
+    | Lval lv -> (
+        let (name, index, typ) = transform_lval lv in
+        match index with
+        | Some _ -> CAcc (name, index, typ)
+        | None -> CVar (name, typ))
     | CastE (ty, e) -> (
         match ty with
         | TInt _ | TFloat _ ->  (* TODO: note the loss of precision for float -> int casts *)
@@ -104,21 +106,26 @@ and transform_aexp e =
         raise (ParseError "AlignOfE unsupported\n")
 
 (* Gets the name of the variable *)
-and transform_lval ((lhost, _) : lval) : (string * ctyp) =
+and transform_lval ((lhost, offset) : lval) : (string * caexp option * ctyp) =
     match lhost with
-    | Var vi -> (vi.vname, get_type vi)
-    | _ -> 
-        raise (ParseError "lvalues of type [T] not supported\n") ;
+    | Var vi -> (vi.vname, offset_index offset, get_type_varinfo vi)
+    | _ -> raise (ParseError "lvalues of type [T] not supported\n")
 
-and get_type (vi : varinfo) =
-    match vi.vtype with
-    | TInt (_,_) -> IntTyp
+and offset_index (off : offset) : caexp option = 
+    match off with
+    | Index (e, _) -> Some (transform_aexp e)
+    | _ -> None 
+
+and get_type_varinfo (vi : varinfo) : ctyp = get_type vi.vtype
+
+and get_type (t : typ) : ctyp =
+    match t with
+    | TInt   (_,_) -> IntTyp
     | TFloat (_,_) -> FloatTyp
-    | _ -> raise (ParseError "Unsupported variable type")
-    ;;
+    | TArray (t,_,_) -> ArrTyp (get_type t) 
+    | _ -> raise (ParseError "Unsupported variable type") ;;
 
 
-(* TODO: Figure out how true/false is represented, possibly as 1 and 0 consts *)
 let rec transform_bexp e =
     match e with
     | BinOp (op, l, r, _) ->
@@ -156,7 +163,8 @@ and transform_bool_binop op l r =
 let transform_instr i =
     match i with
     | Set (lv, e, _, _) ->
-        CAsgn (fst (transform_lval lv), (transform_aexp e))
+        let (name, index, _) = transform_lval lv in
+        CAsgn ((name, index), (transform_aexp e))
     | VarDecl (_,_) ->
         raise (ParseError "Variable declarations are not supported") ;
     | Call (_,_,_,_,_) ->

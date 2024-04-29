@@ -14,6 +14,7 @@ open List
 open Interval
 open Segment
 open Tree
+open Memory
 
 exception SpecFileError of string ;;
 

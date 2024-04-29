@@ -4,21 +4,30 @@ open Tree
 open Interval
 open Segment
 open Stepfunction
+open Memory
+open Util
 
 (* Concrete Domain *)
 let str_cval (v : cval) : string =
     match v with
-    | CInt i -> Int.to_string i
-    | CFloat f -> Float.to_string f ;;
+    | CInt i      -> Int.to_string i
+    | CFloat f    -> Float.to_string f 
+    | CArr (_, _) -> "arr" ;;
+    (*
+    | CIntArr a   -> "int[]"
+    | CFloatArr a -> "flt[]"
+    ;;
+    *)
 
 let rec str_caexp (exp : caexp) : string = 
     match exp with
-    | CVal v      -> str_cval v
-    | CVar (n, _) -> n
-    | CAdd (l, r) -> str_caexp l ^ " + " ^ str_caexp r
-    | CSub (l, r) -> str_caexp l ^ " - " ^ str_caexp r
-    | CMul (l, r) -> str_caexp l ^ " * " ^ str_caexp r
-    | CDiv (l, r) -> str_caexp l ^ " / " ^ str_caexp r ;;
+    | CVal v         -> str_cval v
+    | CVar (n, _)    -> n
+    | CAcc (n, i, _) -> n ^ "[" ^ map_opt str_caexp i "" ^ "]"
+    | CAdd (l, r)    -> str_caexp l ^ " + " ^ str_caexp r
+    | CSub (l, r)    -> str_caexp l ^ " - " ^ str_caexp r
+    | CMul (l, r)    -> str_caexp l ^ " * " ^ str_caexp r
+    | CDiv (l, r)    -> str_caexp l ^ " / " ^ str_caexp r ;;
 
 let str_cbexp (exp : cbexp) : string =
     match exp with
@@ -31,8 +40,8 @@ let str_cbexp (exp : cbexp) : string =
 
 let rec str_cstmt (stmt : cstmt) : string = 
     match stmt with
-    | CAsgn (n, v) -> 
-        n ^ " = " ^ str_caexp v
+    | CAsgn ((n, i), v) -> 
+        n ^ map_opt (fun x -> "[" ^ str_caexp x ^ "]") i "" ^ " = " ^ str_caexp v
     | CIf (b, t, e) -> 
         "if (" ^ str_cbexp b ^ ")\nthen " ^ str_cstmt t ^ "\nelse " ^ str_cstmt e
     | CFor (i, c, a, b) ->
@@ -78,25 +87,36 @@ let str_sf (trm : stepF) : string =
     | StepF ies -> str_segs ies
     | Bot       -> "_" ;;
 
+
 let str_id (id : id) : string = 
     match id with
     | Id n -> n
-    | Const -> "Const" ;;
+    | Const -> "Const" 
+    | ArrElem (n, idxs) -> n ^ "[" ^ str_iIntr idxs ^ "]" ;;
 
-let str_aval (v : aval) : string =
+let rec str_aval (v : aval) : string =
     match v with
-    | AInt i -> str_iIntr i
-    | AFloat Bot -> "_|_"
-    | AFloat trm -> str_sf trm ;;
+    | AInt i      -> str_iIntr i
+    | AFloat Bot  -> "_|_"
+    | AFloat trm  -> str_sf trm 
+    | AArr (f, l) -> 
+        (fold_left (fun acc i -> acc ^ (Int.to_string i) ^ " : " ^ str_aval (Option.get (f i)) ^ ", ")
+                   ("[")
+                   (init l (fun x -> x))) ^ "] (" ^ Int.to_string l ^ ")" ;;
+    (*
+    | AIntArr a   -> "int[]"
+    | AFloatArr a -> "float[]" ;;
+    *)
 
 let rec str_aaexp (exp : aaexp) : string = 
     match exp with
-    | AVal v      -> str_aval v
-    | AVar (n, _) -> n
-    | AAdd (l, r) -> str_aaexp l ^ " + " ^ str_aaexp r
-    | ASub (l, r) -> str_aaexp l ^ " - " ^ str_aaexp r
-    | AMul (l, r) -> str_aaexp l ^ " * " ^ str_aaexp r
-    | ADiv (l, r) -> str_aaexp l ^ " / " ^ str_aaexp r ;;
+    | AVal v         -> str_aval v
+    | AVar (n, _)    -> n
+    | AAcc (n, i, _) -> n ^ "[" ^ map_opt str_aaexp i "" ^ "]"
+    | AAdd (l, r)    -> str_aaexp l ^ " + " ^ str_aaexp r
+    | ASub (l, r)    -> str_aaexp l ^ " - " ^ str_aaexp r
+    | AMul (l, r)    -> str_aaexp l ^ " * " ^ str_aaexp r
+    | ADiv (l, r)    -> str_aaexp l ^ " / " ^ str_aaexp r ;;
 
 let str_abexp (exp : abexp) : string =
     match exp with
@@ -109,8 +129,8 @@ let str_abexp (exp : abexp) : string =
 
 let rec str_astmt (stmt : astmt) : string = 
     match stmt with
-    | AAsgn (n, v) -> n ^ 
-        " = " ^ str_aaexp v
+    | AAsgn ((n, i), v) -> 
+        n ^ map_opt (fun x -> "[" ^ str_aaexp x ^ "]") i "" ^ " = " ^ str_aaexp v
     | AIf (b, t, e) -> 
         "if " ^ str_abexp b ^ "\nthen " ^ str_astmt t ^ "\nelse " ^ str_astmt e
     | AFor (i, c, a, b) ->
@@ -121,11 +141,20 @@ let rec str_astmt (stmt : astmt) : string =
 
 let str_avar (n : string) (amem : amem) : string = 
     match amem.lookup n with
-    | Some (AInt ii) -> n ^ " -> " ^ str_iIntr ii
-    | Some (AFloat et) -> n ^ " -> " ^ str_sf et
+    | Some av -> n ^ " -> " ^ str_aval av
     | None -> n ^ " -> _" ;;
+    (*
+    | Some (AInt ii)     -> n ^ " -> " ^ str_iIntr ii
+    | Some (AFloat et)   -> n ^ " -> " ^ str_sf et
+    | Some (AArr (_, _)) -> n ^ " -> " ^ "AArr"
+    (*
+    | Some (AFloatArr a) -> n ^ " -> " ^ "float[]"
+    | Some (AIntArr a)   -> n ^ " -> " ^ "int[]"
+    *)
+    *)
 
 let str_amem (amem : amem) : string =
+    Format.printf "str_amem\n" ;
     fold_left (fun acc x -> acc ^ "\n" ^ (str_avar x amem))
               "" (SS.elements amem.dom) ;;
 
@@ -164,8 +193,13 @@ let csv_sf (name : string) (trm : stepF) : string =
 
 let csv_avar (n : string) (amem : amem) : string = 
     match amem.lookup n with
-    | Some (AInt ii) -> n ^ ",int," ^ csv_iIntr ii
-    | Some (AFloat et) -> csv_sf n et
+    | Some (AInt ii)    -> n ^ ",int," ^ csv_iIntr ii
+    | Some (AFloat et)  -> csv_sf n et
+    | Some (AArr (_,_)) -> n ^ ",arr,low,high,err"
+    (*
+    | Some (AIntArr a)   -> n ^ ",int[],low,high,err"
+    | Some (AFloatArr a) -> n ^ ",float[],low,high.err"
+    *)
     | None -> n ^ " -> _" ;;
 
 let csv_amem (amem : amem) : string =

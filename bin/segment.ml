@@ -1,6 +1,5 @@
 open Float
 open List
-open Util
 
 open Interval
 

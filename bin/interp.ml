@@ -5,8 +5,11 @@ open Tree
 open Interval
 open Segment
 open Stepfunction
+open Memory
+open Printing
 
 exception UnassignedVariableException of string ;;
+exception InvalidAccessException of string ;;
 
 (* Abstraction *)
 (* --------------------------------------------------- *)
@@ -14,24 +17,31 @@ exception UnassignedVariableException of string ;;
 let abst_flt (f : float) : segment = 
     { int = Intr { u = f ; l = f }; err = ulp f } ;;
 
-let abst_typ (typ : ctyp) : atyp =
+let rec abst_typ (typ : ctyp) : atyp =
     match typ with
-    | IntTyp -> IntrTyp
-    | FloatTyp -> AStepTyp ;;
+    | IntTyp   -> IntrTyp
+    | FloatTyp -> AStepTyp 
+    | ArrTyp t -> AArrTyp (abst_typ t) ;;
 
-let abst_val (v : cval) : aval =
+let rec abst_val (v : cval) : aval =
     match v with
-    | CInt i -> AInt (Intr { l = i ; u = i })
-    | CFloat f -> AFloat (StepF [abst_flt f]) ;;
+    | CInt i     -> AInt (Intr { l = i ; u = i })
+    | CFloat f   -> AFloat (StepF [abst_flt f]) 
+    | CArr (a,l) -> AArr ((fun i -> Some (abst_val (a i))), l) ;;
+    (*
+    | CIntArr a   -> AIntArr (fun i -> abst_val (a i))
+    | CFloatArr a -> AFloatArr (fun i -> avst_val (a i)) ;;
+    *)
 
 let rec abst_aexp (exp : caexp) : aaexp = 
     match exp with
-    | CVal v      -> AVal (abst_val v)
-    | CVar (n, t) -> AVar (n, abst_typ t)
-    | CAdd (l, r) -> AAdd ((abst_aexp l), (abst_aexp r))
-    | CSub (l, r) -> ASub ((abst_aexp l), (abst_aexp r))
-    | CMul (l, r) -> AMul ((abst_aexp l), (abst_aexp r))
-    | CDiv (l, r) -> ADiv ((abst_aexp l), (abst_aexp r)) ;;
+    | CVal v         -> AVal (abst_val v)
+    | CVar (n, t)    -> AVar (n, abst_typ t)
+    | CAcc (n, i, t) -> AAcc (n, Option.map abst_aexp i, abst_typ t)
+    | CAdd (l, r)    -> AAdd ((abst_aexp l), (abst_aexp r))
+    | CSub (l, r)    -> ASub ((abst_aexp l), (abst_aexp r))
+    | CMul (l, r)    -> AMul ((abst_aexp l), (abst_aexp r))
+    | CDiv (l, r)    -> ADiv ((abst_aexp l), (abst_aexp r)) ;;
 
 let abst_bexp (exp : cbexp) : abexp =
     match exp with
@@ -44,8 +54,8 @@ let abst_bexp (exp : cbexp) : abexp =
     
 let rec abst_stmt (exp : cstmt) : astmt = 
     match exp with
-    | CAsgn (n, v) -> 
-        AAsgn (n, (abst_aexp v))
+    | CAsgn ((n, i), v) -> 
+        AAsgn ((n, Option.map abst_aexp i), (abst_aexp v))
     | CIf (b, t, e) -> 
         AIf ((abst_bexp b), (abst_stmt t), (abst_stmt e))
     | CFor (i, c, b, a) -> 
@@ -66,17 +76,30 @@ let aval_op (l : aval) (r : aval)
     | AInt ii1, AInt ii2 -> AInt (iintr_op ii1 ii2)
     | AInt ii, AFloat et | AFloat et, AInt ii -> 
         AInt (iintr_op ii (sf_to_iintr et))
-    | AFloat et1, AFloat et2 -> AFloat (sf_op et1 et2) ;;
+    | AFloat et1, AFloat et2 -> AFloat (sf_op et1 et2)
+    | AArr _, _ -> failwith "cannot do arithmetic on arrays"
+    | _, AArr _ -> failwith "cannot do arithmetic on arrays"
+    ;;
 
 (* Arithmetic Expressions *)
 (* --------------------------------------------------- *)
 let rec asem_aexp (exp : aaexp) (mem : amem) : (aval * id) =
     let { dom = _ ; lookup = m } = mem in
     match exp with
-    | AVal e      -> (e, Const)
+    | AVal e      -> 
+        (e, Const)
     | AVar (n, _) -> (
         match m n with
         | Some v -> (v, Id n)
+        | None -> raise (UnassignedVariableException n))
+    | AAcc (n, i, _) -> (
+        let index = Option.map (fun x -> fst @@ asem_aexp x mem) i in
+        match m n with
+        | Some (AArr (a,_)) -> (index_array a index, ArrElem (n, extract_index i mem))
+        | Some v -> raise (InvalidAccessException 
+                           ("Attempting to access non-array (" ^ n ^ 
+                            ") with non-integer: " ^
+                            Printing.str_aval v))
         | None -> raise (UnassignedVariableException n))
     | AAdd (l, r) -> 
         (aval_op (fst (asem_aexp l mem)) 
@@ -93,7 +116,28 @@ let rec asem_aexp (exp : aaexp) (mem : amem) : (aval * id) =
     | ADiv (l, r) -> 
         (aval_op (fst (asem_aexp l mem)) 
                   (fst (asem_aexp r mem)) 
-                  iintr_div ediv, Const) ;;
+                  iintr_div ediv, Const)
+
+and index_array (a : arr) (inter : aval option) : aval =
+    match inter with
+    | Some (AInt i) -> (
+        (* Get the union of all possible values for the index *)
+        match iintr_range i with
+        | i :: is -> fold_left (fun acc j -> aval_union acc (Option.get (a j))) (Option.get (a i)) is
+        | [] -> raise (InvalidAccessException 
+                       "Attempting to index array with empty interval"))
+    | _ -> raise (InvalidAccessException 
+                  "Attempting to index an array with something other than an int") 
+
+(* Get the index represented by an aval *)
+and extract_index (a : aaexp option) (mem : amem) : int intr =
+    let index = Option.map (fun x -> fst @@ asem_aexp x mem) a in
+    match index with
+    | Some av -> (
+        match av with
+        | AInt i -> i
+        | _      -> failwith "Attempting to index an array with something other than an int")
+    | None -> failwith "Attempting to access an array with no index" ;;
 
 (* Abstract boolean operators *)
 (* --------------------------------------------------- *)
@@ -107,9 +151,9 @@ let abst_op (left : stepF) (right : stepF)
     
 
 (* Need to maintain the types of each side of the operator *)
-let abst_bool_op (l : aval * id) (r : aval * id) 
-                 (iintr_op : int intr -> int intr -> (int intr * int intr))
+let abst_bool_op (iintr_op : int intr -> int intr -> (int intr * int intr))
                  (sf_op : stepF -> stepF -> (stepF * stepF))
+                 (l : aval * id) (r : aval * id) 
                  : ((aval * id) * (aval * id)) = 
 
     let (ltrm, lid), (rtrm, rid) = l, r in
@@ -130,18 +174,21 @@ let abst_bool_op (l : aval * id) (r : aval * id)
     | AFloat sf, AInt ii -> 
         ((AFloat (fst (sf_op sf (iintr_to_sf ii))), lid),
          (AInt (snd (iintr_op (sf_to_iintr sf) ii)), rid))
+    | AArr _, _ -> failwith "cannot compare arrays"
+    | _, AArr _ -> failwith "cannot compare arrays"
     ;;
 
-let abst_lt l r = abst_bool_op l r iintr_lt sf_lt ;;
-let abst_le l r = abst_bool_op l r iintr_le sf_le ;;
-let abst_gt l r = abst_bool_op l r iintr_gt sf_gt ;;
-let abst_ge l r = abst_bool_op l r iintr_ge sf_ge ;;
-let abst_eq l r = abst_bool_op l r iintr_eq sf_eq ;;
-let abst_neq l r = abst_bool_op l r iintr_neq sf_neq ;;
+let abst_lt = abst_bool_op iintr_lt sf_lt ;;
+let abst_le = abst_bool_op iintr_le sf_le ;;
+let abst_gt = abst_bool_op iintr_gt sf_gt ;;
+let abst_ge = abst_bool_op iintr_ge sf_ge ;;
+let abst_eq = abst_bool_op iintr_eq sf_eq ;;
+let abst_neq = abst_bool_op iintr_neq sf_neq ;;
 
 (* Abstract Semantics of boolean expressions *)
 (* --------------------------------------------------- *)
 let asem_bexp (exp : abexp) (m : amem) : amem =
+    Format.printf "asem_bexp\n" ;
     match exp with
     | ALt (l, r) -> 
         let ((new_l, lid), (new_r, rid)) = abst_lt (asem_aexp l m) (asem_aexp r m) in
@@ -160,20 +207,18 @@ let asem_bexp (exp : abexp) (m : amem) : amem =
         let ((new_l, lid), (new_r, rid)) = abst_gt (asem_aexp l m) (asem_aexp r m) in
         amem_update lid new_l (amem_update rid new_r m)
 
-let aval_union (a1 : aval) (a2 : aval) : aval = 
-    match a1, a2 with
-    | AInt ii1, AInt ii2 -> AInt (iintr_union ii1 ii2)
-    | AInt ii, AFloat et -> AInt (iintr_union ii (sf_to_iintr et))
-    | AFloat et, AInt ii -> AInt (iintr_union (sf_to_iintr et) ii)
-    | AFloat et1, AFloat et2 -> AFloat (sf_union et1 et2) ;;
-
 (* u_mem : amem -> amem -> amem *)
 let u_amem mem1 mem2 = 
+    Format.printf "u_amem\n" ;
     let { dom = dom1 ; lookup = m1 } = mem1 in
     let { dom = dom2 ; lookup = m2 } = mem2 in
     let dom3 = SS.union dom1 dom2 in
+    let updated = 
+        map (fun x -> (x, Some (aval_union (fail_lookup x m1) 
+                                           (fail_lookup x m2))))
+            (SS.elements dom3) in
     { dom = dom3 ;
-      lookup = fun x -> Some (aval_union (fail_lookup x m1) (fail_lookup x m2)) } ;;
+      lookup = fun x -> assoc x updated} ;;
 
 
 (* Widening and Narrowing 
@@ -244,20 +289,23 @@ let narrow_iintr (i1 : int intr) (i2 : int intr) : int intr =
     let high = if upper i1 = max_int then upper i2 else upper i1 in
     iintr_of low high ;;
 
-let itr_op_aval (a1 : aval) (a2 : aval) 
-                (sf_op : stepF -> stepF -> stepF) 
-                (iintr_op : int intr -> int intr -> int intr) : aval =
-    match a1, a2 with
+let rec itr_op_aval (sf_op : stepF -> stepF -> stepF) 
+                    (iintr_op : int intr -> int intr -> int intr) 
+                    (av1 : aval) (av2 : aval) : aval =
+    match av1, av2 with
     | AFloat sf1, AFloat sf2 -> AFloat (sf_op sf1 sf2)
     | AFloat sf1, AInt i2 -> AInt (iintr_op (sf_to_iintr sf1) i2)
     | AInt i1, AFloat sf2 -> AInt (iintr_op i1 (sf_to_iintr sf2))
-    | AInt i1, AInt i2 -> AInt (iintr_op i1 i2) ;;
+    | AInt i1, AInt i2 -> AInt (iintr_op i1 i2) 
+    | AArr (a1, l1), AArr (a2, l2) -> apply (itr_op_aval sf_op iintr_op) a1 l1 a2 l2 
+    | AArr _, _ | _, AArr _ -> failwith "Variable type changed between iterations" ;;
+
 
 let widen_aval (a1 : aval) (a2 : aval) : aval =
-    itr_op_aval a1 a2 widen_sf widen_iintr ;;
+    itr_op_aval widen_sf widen_iintr a1 a2 ;;
 
 let narrow_aval (a1 : aval) (a2 : aval) : aval =
-    itr_op_aval a1 a2 narrow_sf narrow_iintr ;;
+    itr_op_aval narrow_sf narrow_iintr a1 a2 ;;
 
 let aval_opt_op (a1 : aval option) (a2 : aval option) 
                 (op : aval -> aval -> aval) : aval  =
@@ -280,26 +328,44 @@ let amem_op (mem1 : amem) (mem2 : amem)
               mem1 (SS.elements mem2.dom) ;;
 
 let widen_amem (mem1 : amem) (mem2 : amem) : amem =
+    Format.printf "widen_amem\n" ;
     amem_op mem1 mem2 widen_aval_opt ;;
 
-let rec narrow_amem (mem1 : amem) (mem2 : amem) : amem =
+let narrow_amem (mem1 : amem) (mem2 : amem) : amem =
     amem_op mem1 mem2 narrow_aval_opt ;;
 
-(* iterate with widening *)
+(* Bounded iteration with widening after n iterations *)
 let rec abst_iter (f : amem -> amem) (m : amem) (n : int) : amem =
-    if n = 0 then m else
+    Format.printf "abst_iter %d\n" n ;
+    if n = 0 then abst_iter_w f m else 
+    let next = (Format.printf "next\n") ; f m in
+    let unioned = (Format.printf "union\n") ; u_amem m next in
+    if amem_eq unioned m 
+    then unioned
+    else abst_iter f unioned (n - 1)
+
+and abst_iter_w (f : amem -> amem) (m : amem) : amem =
+    Format.printf "abst_iter_w\n" ;
     let next = f m in
     let widened = widen_amem m next in
-    if widened = m then 
-        widened
-    else
-        abst_iter f widened (n - 1) ;;
+    if amem_eq widened m 
+    then widened
+    else (
+        Format.printf "unequal widening:\n%s\n" (str_amem widened) ;
+        abst_iter_w f widened
+        );;
 
 let comp f g x = f (g x) ;;
 
 let rec asem_stmt (exp : astmt) (iters : int) (m : amem) : amem =
+    Format.printf "asem_stmt: %s\n\n" (Printing.str_astmt exp) ;
+    Format.printf "asem_stmt amem = %s\n\n" @@ Printing.str_amem m ;
     match exp with
-    | AAsgn (id, e) -> amem_update (Id id) (fst (asem_aexp e m)) m 
+    | AAsgn ((id, idx), e) -> 
+        let ident = if Option.is_some idx 
+                    then ArrElem (id, extract_index idx m)
+                    else Id id in
+        amem_update ident (fst (asem_aexp e m)) m 
     | AIf (c, t, e) -> 
         u_amem
             (u_amem (asem_stmt t iters (asem_bexp c m)) 

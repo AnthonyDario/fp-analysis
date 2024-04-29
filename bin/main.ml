@@ -1,6 +1,6 @@
 open Interp
 open Parse
-open Tree
+open Memory
 
 (* Command Line Arguments *)
 let usage_msg = "analyze [-test] <file1> -f <function-name> -sf <spec-file>" ;;
@@ -29,8 +29,9 @@ let analyze filename =
                then amem_bot 
                else Spec.parse_spec_file !spec_file in
     let cstmt = transform (parse_file filename) !fun_name in
+    Format.printf "parsed\n" ;
     let astmt = abst_stmt cstmt in
-    (* printfile cstmt amem ; *)
+    Format.printf "abstracted:\n%s\n\n" (Printing.str_cstmt cstmt);
     abst_interp astmt amem ;;
 
 let write_file name mem =

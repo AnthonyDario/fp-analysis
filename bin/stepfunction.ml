@@ -30,24 +30,6 @@ let get_segs (sf : stepF) : segment list =
     | StepF segs -> segs
     | Bot -> [] ;;
 
-(* This returns the domain as a list of intervals *)
-(* TODO: Where is this used? *)
-(*
-let dom (sf : stepF) : float intr list =
-    let sorted = 
-        sort (fun s1 s2 -> Float.compare (lower s1.int) (lower s2.int)) 
-             (get_segs sf) in
-    match sorted with
-    | x :: xs ->
-        fold_left 
-            (fun acc s -> 
-                if intr_overlap s.int (hd acc)
-                then (intr_union (hd acc) s.int) :: tl acc
-                else s.int :: acc)
-            [x.int] xs
-    | [] -> [] ;;
-    *)
-
 let sf_append (sf : stepF) (segs : segment list) = 
     match sf with
     | StepF errs -> StepF (segs @ errs)
@@ -122,13 +104,11 @@ let rec merge (sf : stepF) : stepF =
         sort (fun s1 s2 -> Float.compare s2.err s1.err) (get_segs sf) in
     tot := length err_first ;
     cnt := 0 ;
-    let ret = StepF (merge_inner [] [] err_first false) in
-    Format.printf "\nmerged %d into %d\n" !tot (length (get_segs ret)) ; ret
+    StepF (merge_inner [] [] err_first false)
+
 and merge_inner (dom : float intr list) (acc : segment list) 
                 (lst : segment list) (has_nan : bool) : segment list = 
     cnt := !cnt + 1;
-    Format.printf "\rmerged %d/%d - dom size = %d - acc size = %d" !cnt !tot (length dom) (length acc); 
-    Format.print_flush();
     match lst with
     | x :: xs -> 
         if has_nan && not (is_valid x.int)
@@ -137,9 +117,7 @@ and merge_inner (dom : float intr list) (acc : segment list)
                 x.err = (hd acc).err && 
                 (intr_adjacent x.int (hd acc).int || intr_overlap x.int (hd acc).int)
         then 
-             (* let com = combine_seg x (hd acc) in *)
              merge_inner (expand_domain dom x.int)
-                         (* ((seg_withouts_intr com dom) @ acc) *)
                          (combine_seg x (hd acc) :: tl acc)
                          xs
                          (has_nan || (not (is_valid x.int)))
@@ -174,13 +152,6 @@ let rec eop (l : stepF) (r : stepF)
         let ms = merge (StepF is) in
         let ret = concat (map (fun s -> binade_split_seg s) 
                          (get_segs ms)) in 
-        Format.printf 
-            "\nsplit : %d * %d = %d into %d then %d\n" 
-            (length (get_segs l)) 
-            (length (get_segs r)) 
-            (length is) 
-            (length (get_segs ms))
-            (length ret) ;
         merge (StepF ret)
     | _, _ -> Bot
 

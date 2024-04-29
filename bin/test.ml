@@ -10,6 +10,7 @@ open Segment
 open Interval
 open Util
 open Parse
+open Memory
 
 (* Testing functions *)
 let test b m = if not b then failwith m ;;
@@ -645,19 +646,19 @@ let sf_testing () =
 let test1 = 
     CCol (
         CIf (CGe (CVar ("x", FloatTyp), CVal (CInt 12)),
-             CAsgn ("x", CAdd (CVar ("x", FloatTyp), CVal (CFloat 5.7))),
-             CAsgn ("x", CMul (CVal (CFloat 3.1), CVar ("x", FloatTyp)))),
+             CAsgn (("x", None), CAdd (CVar ("x", FloatTyp), CVal (CFloat 5.7))),
+             CAsgn (("x", None), CMul (CVal (CFloat 3.1), CVar ("x", FloatTyp)))),
         CRet (CVar ("x", FloatTyp)))
     ;;
 
 let test2 = 
     CCol (
         CCol (
-            CAsgn ("x", CVal (CFloat 2.4)),
-            CFor (CAsgn ("i", CVal (CInt 0)), 
+            CAsgn (("x", None), CVal (CFloat 2.4)),
+            CFor (CAsgn (("i", None), CVal (CInt 0)), 
                   CLt (CVar ("i", IntTyp), CVal (CInt 10)), 
-                  CAsgn ("i", CAdd ((CVar ("i", IntTyp) , CVal (CInt 1)))),
-                  CAsgn ("x", CAdd ((CVar ("x", FloatTyp), CVal (CFloat 2.1)))))),
+                  CAsgn (("i", None), CAdd ((CVar ("i", IntTyp) , CVal (CInt 1)))),
+                  CAsgn (("x", None), CAdd ((CVar ("x", FloatTyp), CVal (CFloat 2.1)))))),
         CRet (CVar ("x", FloatTyp)))
     ;;
 
@@ -699,10 +700,10 @@ let runtest exp amem =
     printf "\n%s\n" (str_amem (abst_interp aexp amem)) ;
     printf "------------------\n" ;;
 
-let test = CCol (CAsgn ("x", CVal (CFloat 7.2)),
+let test = CCol (CAsgn (("x", None), CVal (CFloat 7.2)),
                  CIf (CLt (CVar ("x", FloatTyp), CVal (CFloat 12.2)),
-                      CAsgn ("x", CAdd (CVar ("x", FloatTyp), CVal (CFloat 5.7))),
-                      CAsgn ("x", CMul (CVal (CFloat 3.1), CVar ("x", FloatTyp))))) ;;
+                      CAsgn (("x", None), CAdd (CVar ("x", FloatTyp), CVal (CFloat 5.7))),
+                      CAsgn (("x", None), CMul (CVal (CFloat 3.1), CVar ("x", FloatTyp))))) ;;
 
 (* Testing with parameters *)
 let amem_init = 
@@ -711,14 +712,14 @@ let amem_init =
                 amem_bot ;;
 
 let test2 = CIf (CGt (CVar ("x", FloatTyp), CVal (CFloat 12.2)),
-                 CAsgn ("x", CAdd (CVar ("x", FloatTyp), CVal (CFloat 5.7))),
-                 CAsgn ("x", CMul (CVal (CFloat 3.1), CVar ("x", FloatTyp)))) ;;
+                 CAsgn (("x", None), CAdd (CVar ("x", FloatTyp), CVal (CFloat 5.7))),
+                 CAsgn (("x", None), CMul (CVal (CFloat 3.1), CVar ("x", FloatTyp)))) ;;
 
 (* Testing widening *)
-let test3 = CFor (CAsgn ("i", CVal (CInt 9)),
+let test3 = CFor (CAsgn (("i", None), CVal (CInt 9)),
                   CLt (CVar ("i", IntTyp), CVal (CInt 10)),
-                  CAsgn ("i", CAdd (CVar ("i", IntTyp), CVal (CInt 1))),
-                  CAsgn ("x", CAdd (CVar ("x", FloatTyp), CVal (CInt 1)))) ;;
+                  CAsgn (("i", None), CAdd (CVar ("i", IntTyp), CVal (CInt 1))),
+                  CAsgn (("x", None), CAdd (CVar ("x", FloatTyp), CVal (CInt 1)))) ;;
 
 let runtests () =
     (*runtest test amem_bot ;

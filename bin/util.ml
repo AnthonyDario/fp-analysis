@@ -35,3 +35,15 @@ let rec remove_last lst =
     | [] -> []
     | _ :: [] -> []
     | x :: xs -> x :: (remove_last xs) ;;
+
+(* Get optional value with default *)
+let get_opt (x : 'a option) (default : 'a) : 'a =
+    match x with
+    | Some v -> v
+    | None   -> default ;;
+
+(* Map the optional or return a default value *)
+let map_opt (f : 'a -> 'b) (x : 'a option) (default : 'b) : 'b =
+    match x with
+    | Some v -> f v
+    | None   -> default ;;

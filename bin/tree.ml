@@ -1,16 +1,25 @@
 open Interval
 open Stepfunction
 
+open Segment
+open List
+
 (* Concrete Domain *)
-type ctyp = IntTyp | FloatTyp ;;
+type ctyp = IntTyp | FloatTyp | ArrTyp of ctyp ;;
 
 type cval =
     | CInt   of int
     | CFloat of float
+    | CArr   of (int -> cval) * int ;;
+    (*
+    | CIntArr   of (int -> int)
+    | CFloatArr of (int -> float) ;;
+    *)
 
 type caexp =
     | CVal of cval
     | CVar of string * ctyp
+    | CAcc of string * caexp option * ctyp (* Array Access *)
     | CAdd of caexp * caexp
     | CSub of caexp * caexp
     | CMul of caexp * caexp
@@ -25,7 +34,7 @@ type cbexp =
     | CGt of caexp * caexp ;;
 
 type cstmt =
-    | CAsgn of string * caexp
+    | CAsgn of (string * caexp option) * caexp
     | CIf   of cbexp * cstmt * cstmt
     | CFor  of cstmt * cbexp * cstmt * cstmt
     | CCol  of cstmt * cstmt 
@@ -34,15 +43,19 @@ type cstmt =
 (* Abstract Domain *)
 
 (* Abstract AST *)
-type atyp = IntrTyp | AStepTyp
+type atyp = IntrTyp | AStepTyp | AArrTyp of atyp ;;
 
 type aval = 
     | AInt   of int intr
-    | AFloat of stepF ;;
+    | AFloat of stepF 
+    | AArr   of arr * int
+
+and arr = int -> aval option ;;
 
 type aaexp =
     | AVal of aval
     | AVar of string * atyp
+    | AAcc of string * aaexp option * atyp (* array access *)
     | AAdd of aaexp * aaexp
     | ASub of aaexp * aaexp
     | AMul of aaexp * aaexp
@@ -66,44 +79,106 @@ let not_abexp abexp =
     | AGt (l, r) -> ALe (l, r) ;;
 
 type astmt = 
-    | AAsgn of string * aaexp
+    | AAsgn of (string * aaexp option) * aaexp
     | AIf   of abexp * astmt * astmt
     | AFor  of astmt * abexp * astmt * astmt
     | ACol  of astmt * astmt 
     | ARet  of aaexp ;;
 
-type id = Id of string | Const ;;
+(* -------------------------- *)
+(* DELETE ME *)
+let str_interval (i : float interval) : string = 
+    "[" ^ Format.sprintf "%20.30f" i.l ^ 
+    " ; " ^ Format.sprintf "%20.30f" i.u ^ "]" ;;
 
-(* Abstract Memory *)
-module SS = Set.Make(String) ;;
+let str_intr (intr : float intr) : string =
+    match intr with
+    | Intr i -> str_interval i
+    | IntrErr -> "IntrErr"
+    | IntrBot -> "_|_" ;;
 
-exception UndefinedVariableException of string ;;
+let str_intrs (is : float intr list) : string =
+    fold_left (fun acc i -> acc ^ str_intr i ^ ", ") "{" is ^ "}" ;;
 
-(* Memory modeled as a function.  The domain is tracked. *)
-type amem = {
-    dom : SS.t ;
-    lookup : string -> aval option
-}
+let str_iInterval (i : int interval) : string =
+        "[" ^ Int.to_string i.l ^ 
+        " ; " ^ Int.to_string i.u ^ "]" ;;
 
-let fail_lookup (x : string) (m : string -> aval option) = 
-    match m x with
-    | Some v -> v
-    | None -> raise (UndefinedVariableException (x ^ " Is not assigned")) ;;
+let str_iIntr (intr : int intr) : string =
+    match intr with
+    | Intr i -> str_iInterval i
+    | IntrErr -> "IntrErr"
+    | IntrBot -> "_|_" ;;
 
-let amem_bot = { dom = SS.empty ; lookup = fun _ -> None } ;;
+let str_seg (seg : segment) : string =
+    "(" ^ str_intr seg.int ^ ", " ^ Format.sprintf "%20.30f" seg.err ^ ")" ;;
 
-let amem_update (n : id) (v : aval) (m : amem) : amem = 
-    let { dom = mdom ; lookup = look } = m in
-    match n with 
-    | Id id -> 
-        { dom = SS.add id mdom ; 
-          lookup = fun x -> if id = x then Some v else look x }
-    | Const -> m ;;
+let str_segs (segs : segment list) : string =
+    fold_left (fun acc s -> acc ^ str_seg s ^ ", ") "{" segs ^ "}" ;;
 
-(* amem_contains : amem -> string -> bool *)
-let amem_contains m n = 
-    let { dom = _ ; lookup = look } = m in
-    match look n with
-    | None -> false
-    | _   -> true ;;
+let str_sf (trm : stepF) : string = 
+    match trm with
+    | StepF ies -> str_segs ies
+    | Bot       -> "_" ;;
+
+
+let rec str_aval (v : aval) : string =
+    match v with
+    | AInt i      -> str_iIntr i
+    | AFloat Bot  -> "_|_"
+    | AFloat trm  -> str_sf trm 
+    | AArr (f, l) -> 
+        (fold_left (fun acc i -> acc ^ (Int.to_string i) ^ " : " ^ str_aval (Option.get (f i)) ^ ", ")
+                   ("[")
+                   (init l (fun x -> x))) ^ "] (" ^ Int.to_string l ^ ")" ;;
+(* -------------------------- *)
+(* Working with Arrays *)
+
+let arr_bot = fun _ -> None ;;
+
+(* Apply a function piecewise to the elements of a1 and a2 for the length of
+   the shorter list.  All elements in the longer list remain unchanged *)
+let rec apply (f : aval -> aval -> aval)
+              (a1 : arr) (l1 : int)
+              (a2 : arr) (l2 : int) : aval =
+              (*
+    Format.printf "apply ___ %s \n%s\n\n" (str_aval (AArr (a1,l1))) 
+                                          (str_aval (AArr (a2, l2))) ;
+                                          *)
+    if l1 < l2
+    then AArr ((fun i -> if i < l1 then map2 f (a1 i) (a2 i) else a2 i), l2)
+    else AArr ((fun i -> if i < l2 then map2 f (a2 i) (a1 i) else a1 i), l1)
+
+and map2 (f : 'a -> 'b -> 'c) (a : 'a option) (b : 'b option) : 'c option =
+    match a, b with
+    | Some av, Some bv -> Some (f av bv)
+    | _, _ -> None ;;
+
+
+let rec aval_union (av1 : aval) (av2 : aval) : aval = 
+    match av1, av2 with
+    | AInt ii1, AInt ii2     -> AInt (iintr_union ii1 ii2)
+    | AInt ii, AFloat et     -> AInt (iintr_union ii (sf_to_iintr et))
+    | AFloat et, AInt ii     -> AInt (iintr_union (sf_to_iintr et) ii)
+    | AFloat et1, AFloat et2 -> AFloat (sf_union et1 et2) 
+    | AArr (a1, l1), AArr (a2, l2) -> (
+        (* Format.printf "aval_union AArrs %s \nU\n %s\n" (str_aval av1) (str_aval av2) ; *)
+        Format.printf "aval_union AArrs \n" ;
+        Format.print_flush () ;
+        (* input_line stdin ; *)
+        apply aval_union a1 l1 a2 l2
+        )
+    | AArr _, _ | _, AArr _  -> failwith "union of array and number" ;;
+
+
+let arr_update (a1 : arr) (idxs : int intr) (v : aval) : arr =
+    Format.printf "arr_update index %s with %s \n" (str_iIntr idxs) (str_aval v) ;
+    Format.print_flush () ;
+    let updated = map (fun i -> match a1 i with
+                                | Some av -> (Format.printf "arr_update forced";
+                                              Some (aval_union v av))
+                                | None    -> Some v) (iintr_range idxs) in
+    (fun i -> if contains idxs i 
+              then nth updated (i - (lower idxs))
+              else a1 i) ;;
 

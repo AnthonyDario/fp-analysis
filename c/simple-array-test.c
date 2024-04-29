@@ -1,4 +1,6 @@
-void foo (double a)
+#include<stdio.h>
+
+double foo (double a)
 {
     double as[] = {
         20.79148, 20.09775, 19.42749, 19.60912, 19.37787, 21.47362, 30.42308,
@@ -7,13 +9,15 @@ void foo (double a)
 
     double x = 0.0;
 
-    for (int i = 0; i < 14; i++) {
+    for (int i = 0; i < 1; i++) {
         x = x + a * as[i];
     }
 
     x = x / 14.0;
+    return x;
 }
 
 int main() {
-    foo(2.2);
+    double a = foo(-10);
+    printf("%f\n", a);
 }

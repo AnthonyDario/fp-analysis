@@ -54,7 +54,7 @@ let is_valid i =
     | Intr _ -> true
     | _ -> false ;;
 
-let contains intr v = 
+let contains (intr : 'a intr) (v : 'a) : bool = 
     match intr with
     | Intr i -> i.l <= v && i.u >= v 
     | _ -> false ;;
@@ -132,6 +132,13 @@ let diff_intr (i1 : float intr) (i2 : float intr) : float =
 (* Get the floating point value of the upper bound of binade defined by
  * exponent exp *)
 let exp_to_binade (exp : int) : float = pow 2. (Float.of_int exp) ;;
+
+(* get the integers in an int interval *)
+let iintr_range (x : int intr) : int list =
+    match x with
+    | Intr i -> List.init (i.u - i.l + 1) ((+) i.l)
+    | _      -> [] ;;
+    
 
 (* Splitting Intervals *)
 (* -------------------------- *)
