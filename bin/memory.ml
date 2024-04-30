@@ -80,11 +80,12 @@ let str_id (id : id) : string =
 let rec amem_update (n : id) (v : aval) (m : amem) : amem = 
     Format.printf "amem_update %s with %s\n" (str_id n) (str_aval v);
     let { dom = mdom ; tbl = tbl } = m in
+    let new_tbl = Hashtbl.copy tbl in
     match n with 
     | Id id -> 
-        Hashtbl.replace tbl id v ;
+        Hashtbl.replace new_tbl id v ;
         { dom = SS.add id mdom ; 
-          tbl = tbl }
+          tbl = new_tbl }
     | ArrElem (id, idxs) -> (
         Format.printf "ArrElem: %s[%s]\n" id (str_iIntr idxs) ;
         match lookup m id with
@@ -92,18 +93,16 @@ let rec amem_update (n : id) (v : aval) (m : amem) : amem =
             Format.printf "amem_update ArrElem (Some)\n" ;
             Format.print_flush () ;
             let updated = AArr ((arr_update arr idxs v), update_len l idxs) in
-            Hashtbl.replace tbl id updated ;
+            Hashtbl.replace new_tbl id updated ;
             { dom = SS.add id mdom ; 
-              tbl = tbl }
-            )
+              tbl = new_tbl })
         | None -> (
             Format.printf "amem_update ArrElem (None)\n" ; 
             Format.print_flush() ;
             let updated = AArr ((arr_update (arr_bot ()) idxs v), (upper idxs) + 1) in
-            Hashtbl.replace tbl id updated ;
+            Hashtbl.replace new_tbl id updated ;
             { dom = SS.add id mdom ;
-              tbl = tbl }
-                )
+              tbl = new_tbl })
         | Some av -> failwith ("Attempting to index a non-array: " ^ str_aval av))
     | Const -> m 
 

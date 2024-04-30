@@ -216,13 +216,14 @@ let u_amem mem1 mem2 =
     let { dom = dom1 ; tbl = m1 } = mem1 in
     let { dom = dom2 ; tbl = m2 } = mem2 in
     let dom3 = SS.union dom1 dom2 in
-    iter (fun x -> Hashtbl.replace m1 
+    let new_tbl= Hashtbl.copy m1 in
+    iter (fun x -> Hashtbl.replace new_tbl 
                                    x 
                                    (aval_union (fail_lookup x m1)
                                                (fail_lookup x m2)))
          (SS.elements dom3) ;
     { dom = dom3 ;
-      tbl = m1 } ;;
+      tbl = new_tbl } ;;
 
 
 (* Widening and Narrowing 
@@ -350,9 +351,12 @@ let narrow_amem (mem1 : amem) (mem2 : amem) : amem =
 (* Bounded iteration with widening after n iterations *)
 let rec abst_iter (f : amem -> amem) (m : amem) (n : int) : amem =
     Format.printf "abst_iter %d\n" n ;
+    Format.print_flush () ;
+    (* input_line stdin ; *)
     if n = 0 then abst_iter_w f m else 
     let next = (Format.printf "next\n") ; f m in
-    let unioned = (Format.printf "union\n") ; u_amem m next in
+    let unioned =  u_amem m next in
+    (Format.printf "union %s\nU\n%s\n=%s\n\n" (str_amem m) (str_amem next) (str_amem unioned));
     if amem_eq unioned m 
     then unioned
     else abst_iter f unioned (n - 1)
@@ -373,7 +377,7 @@ let comp f g x = f (g x) ;;
 
 let rec asem_stmt (exp : astmt) (iters : int) (m : amem) : amem =
     Format.printf "asem_stmt: %s\n\n" (Printing.str_astmt exp) ;
-    Format.printf "asem_stmt amem = %s\n\n" @@ Printing.str_amem m ;
+    (* Format.printf "asem_stmt amem = %s\n\n" @@ Printing.str_amem m ; *)
     match exp with
     | AAsgn ((id, idx), e) -> 
         let ident = if Option.is_some idx 

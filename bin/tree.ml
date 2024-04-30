@@ -153,8 +153,8 @@ let rec apply (f : aval -> aval -> aval)
                                           *)
     let (long, long_l), (_, short_l) = 
         if l1 < l2 
-        then ((a2, l2), (a1, l1))
-        else ((a1, l1), (a2, l2)) in
+        then ((Hashtbl.copy a2, l2), (a1, l1))
+        else ((Hashtbl.copy a1, l1), (a2, l2)) in
     iter (fun i -> match map2 f (Hashtbl.find_opt a1 i) 
                                 (Hashtbl.find_opt a2 i) with
                    | Some av -> Hashtbl.replace long i av
@@ -169,7 +169,7 @@ and map2 (f : 'a -> 'b -> 'c) (a : 'a option) (b : 'b option) : 'c option =
 
 
 let rec aval_union (av1 : aval) (av2 : aval) : aval = 
-    Format.printf "aval_union %s %s\n" (str_aval av1) (str_aval av2);
+    (* Format.printf "aval_union %s %s\n" (str_aval av1) (str_aval av2); *)
     (* Format.printf "aval_union \n"; *)
     Format.print_flush () ;
     (* input_line stdin; *)
@@ -196,9 +196,10 @@ let arr_update (a1 : arr) (idxs : int intr) (v : aval) : arr =
     (* For each element in the index 
        Update the index with the union if it is there 
        If not then just return the thing *)
-    List.iter (fun i -> match Hashtbl.find_opt a1 i with
-                        | Some av -> Hashtbl.replace a1 i (aval_union v av)
-                        | None -> Hashtbl.replace a1 i v) 
+    let new_tbl = Hashtbl.copy a1 in
+    List.iter (fun i -> match Hashtbl.find_opt new_tbl i with
+                        | Some av -> Hashtbl.replace new_tbl i (aval_union v av)
+                        | None -> Hashtbl.replace new_tbl i v) 
               (iintr_range idxs);
-    a1 ;;
+    new_tbl ;;
 

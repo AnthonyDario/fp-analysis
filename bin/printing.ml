@@ -142,7 +142,6 @@ let str_avar (n : string) (amem : amem) : string =
     | None -> n ^ " -> _" ;;
 
 let str_amem (amem : amem) : string =
-    Format.printf "str_amem\n" ;
     fold_left (fun acc x -> acc ^ "\n" ^ (str_avar x amem))
               "" (SS.elements amem.dom) ;;
 
