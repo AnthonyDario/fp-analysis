@@ -172,7 +172,8 @@ let split_binade (intr : float intr) : float intr list =
     let pos_lb, neg_ub = (succ 0. , pred 0.)in
     match intr with
     | Intr i -> 
-        if snd (frexp i.l) = snd (frexp i.u) then [intr] else 
+        if snd (frexp i.l) = snd (frexp i.u) &&
+           (i.l > 0. || i.u < 0.) then [intr] else 
         if i.l = 0. then 
             intr_of 0. pos_lb  :: 
             split_binade_pos {l = pos_lb ; u = i.u} else
