@@ -15,6 +15,7 @@ open Interval
 open Segment
 open Tree
 open Memory
+open Util
 
 exception SpecFileError of string ;;
 
@@ -36,21 +37,52 @@ let parse_seg (str : string) =
     let intr = parse_intr (nth split 0) in
     seg_of_intr intr (Float.of_string (nth split 1)) ;;
 
-let parse_stepF (str : string) = 
+let parse_stepF (str : string) : aval = 
     let no_braces = global_replace (regexp "[{}]") "" str in
     let seg_strs = filter notempty (map trim (split_on_char ')' no_braces)) in
     AFloat (StepF (map parse_seg seg_strs))
 
+let parse_arr (str : string) (bnds : (int * int)) : aval =
+    let sf = parse_stepF str in
+    let new_tbl = arr_bot () in
+    let low, high = bnds in
+    List.iter (fun i -> Hashtbl.replace new_tbl i sf) (int_seq_lh low high) ;
+    AArr (new_tbl, high - low)  ;;
+
+let rec parse_aval (name : string) (v : string) : (string * aval) =
+    let n = parse_name name in
+    if is_arr name
+    then (n, parse_arr v (get_indices name))
+    else (n, parse_stepF v)
+
+and parse_name (n : string) : string =
+    nth (split_on_char '[' n) 0 
+
+and is_arr (str : string) : bool = 
+    String.contains str '['
+
+and get_indices (str : string) : (int * int) =
+    let no_braces = 
+        (global_replace (regexp "]") "" (nth (split_on_char '[' str) 1)) in
+    let split = split_on_char ',' no_braces in
+    (int_of_string (nth split 0), int_of_string (nth split 1)) ;;
+
 let parse_line (l : string) : (string * aval) = 
     let split = map trim (split_on_char '=' l) in
-    (nth split 0, (parse_stepF (nth split 1))) ;;
+    parse_aval (nth split 0) (nth split 1)
 
 (* Split the file by lines *)
 (* grab each line and turn it into a value *)
 let parse_spec_file (filename : string) : amem = 
     let ic = open_in filename in
+    let ret = 
     fold_left (fun acc l -> 
         let (n, aval) = parse_line l in
         amem_update (Id n) aval acc) 
         amem_bot 
-        (input_lines ic) ;;
+        (input_lines ic) 
+    in
+    Format.printf "Parsed spec file:\n%s\n" (Printing.str_amem ret);
+    Format.print_flush () ;
+    ret
+    ;;
