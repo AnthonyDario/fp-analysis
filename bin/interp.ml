@@ -292,8 +292,7 @@ let widen_iintr (i1 : int intr) (i2 : int intr) : int intr =
         iintr_of low high 
     | IntrBot, Intr _ -> iintr_of min_int max_int 
     | Intr _, IntrBot -> i1 
-    | IntrBot, IntrBot -> IntrBot
-    | IntrErr, _ | _, IntrErr -> IntrErr ;;
+    | IntrBot, IntrBot -> IntrBot ;;
 
 let narrow_iintr (i1 : int intr) (i2 : int intr) : int intr =
     let low = if lower i1 = min_int then lower i2 else lower i1 in
@@ -350,18 +349,23 @@ let narrow_amem (mem1 : amem) (mem2 : amem) : amem =
 
 (* Bounded iteration with widening after n iterations *)
 let rec abst_iter (f : amem -> amem) (m : amem) (n : int) : amem =
+    (abst_iter_down f (abst_iter_up f m n))
+
+(* upward iteration *)
+and abst_iter_up (f : amem -> amem) (m : amem) (n : int) : amem =
     Format.printf "abst_iter %d\n" n ;
     Format.print_flush () ;
     (* input_line stdin ; *)
-    if n = 0 then abst_iter_w f m else 
+    if n = 0 then abst_iter_up_w f m else 
     let next = (Format.printf "next\n") ; f m in
     let unioned =  u_amem m next in
     (Format.printf "union %s\nU\n%s\n=%s\n\n" (str_amem m) (str_amem next) (str_amem unioned));
     if amem_eq unioned m 
     then unioned
-    else abst_iter f unioned (n - 1)
+    else abst_iter_up f unioned (n - 1)
 
-and abst_iter_w (f : amem -> amem) (m : amem) : amem =
+(* with widening *)
+and abst_iter_up_w (f : amem -> amem) (m : amem) : amem =
     Format.printf "abst_iter_w\n" ;
     let next = f m in
     let widened = widen_amem m next in
@@ -370,7 +374,19 @@ and abst_iter_w (f : amem -> amem) (m : amem) : amem =
     then widened
     else (
         Format.printf "unequal widening:\n%s\n" (str_amem widened) ;
-        abst_iter_w f widened
+        abst_iter_up_w f widened
+        )
+
+and abst_iter_down (f : amem -> amem) (m : amem) : amem =
+    let next = f m in
+    let narrowed = narrow_amem m next in
+    if amem_eq narrowed m
+    then narrowed
+    else (
+        Format.printf "unequal narrowing:\n %s\n /\ \n%s\n" (str_amem m) (str_amem next);
+        Format.print_flush () ;
+        (* input_line stdin ; *)
+        abst_iter_down f narrowed
         );;
 
 let comp f g x = f (g x) ;;

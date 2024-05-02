@@ -12,7 +12,7 @@ exception IntervalError of string ;;
 type 'a interval = { l : 'a ; u : 'a } ;;
 
 (* Float interval *)
-type 'a intr = IntrErr | IntrBot | Intr of 'a interval ;;
+type 'a intr = IntrBot | Intr of 'a interval ;;
 
 (* inclusive *)
 let intr_of (l : 'a) (u : 'a) : 'a intr =
@@ -32,14 +32,12 @@ let iintr_of (l : int) (u : int) : int intr =
 let intr_to_iintr (intr : float intr) : int intr = 
     match intr with
     | Intr i -> Intr { l = Int.of_float i.l ; u = Int.of_float (i.u +. 0.5) }
-    | IntrBot -> IntrBot
-    | IntrErr -> IntrErr ;;
+    | IntrBot -> IntrBot ;;
 
 let iintr_to_intr (intr : int intr) : float intr =
     match intr with
     | Intr i -> Intr { l = Float.of_int i.l ; u = Float.of_int i.u }
-    | IntrBot -> IntrBot
-    | IntrErr -> IntrErr ;;
+    | IntrBot -> IntrBot ;;
 
 
 (* Useful utils *)
@@ -68,7 +66,7 @@ let interval_overlap (i1 : 'a interval) (i2 : 'a interval) : bool =
 let intr_overlap (intr1 : 'a intr) (intr2 : 'a intr) : bool = 
     match intr1, intr2 with
     | Intr i1, Intr i2 -> interval_overlap i1 i2 
-    | IntrBot, _ | _, IntrBot | IntrErr, _ | _, IntrErr -> false ;;
+    | IntrBot, _ | _, IntrBot -> false ;;
 
 
 let intr_adjacent (intr1 : float intr) (intr2 : float intr) : bool =
@@ -76,7 +74,7 @@ let intr_adjacent (intr1 : float intr) (intr2 : float intr) : bool =
     | Intr i1, Intr i2 ->
         i1.l = i2.u +. ulp(i2.u) ||
         i1.u = i2.l -. ulp(i2.l)
-    | IntrBot, _ | _, IntrBot | IntrErr, _ | _, IntrErr -> false ;;
+    | IntrBot, _ | _, IntrBot -> false ;;
 
 let lower (intr : 'a intr) = 
     match intr with
@@ -98,7 +96,7 @@ let mag_lg (i: float interval) : float = max_flt [(abs i.l) ; (abs i.u)] ;;
 let mag_lg_intr (intr : float intr) : float =
     match intr with
     | Intr i -> mag_lg i
-    | _ -> nan ;;
+    | IntrBot -> nan ;;
 
 (* If we cross 0 then 0, else whichever one is closer to 0 *)
 let mag_sm i = 
@@ -109,7 +107,7 @@ let mag_sm i =
 let mag_sm_intr (intr : float intr) : float =
     match intr with
     | Intr i -> mag_sm i
-    | _ -> nan ;;
+    | IntrBot -> nan ;;
 
 let ulp_intr (i : float intr) = ulp (mag_lg_intr i) ;;
 
@@ -200,7 +198,7 @@ let iintr_mul_op l r =
     Intr { l = min_ints combos ; u = max_ints combos }
 let iintr_div_op l r = 
     if r.l < 0 && r.u > 0 
-    then IntrErr
+    then Intr { l = min_int ; u = max_int }
     else let combos = [l.l / r.l ; l.l / r.u ; l.u / r.l ; l.u / r.u] in 
          Intr { l = min_ints combos ; u = max_ints combos } ;;
 
@@ -215,7 +213,7 @@ let intr_mul_op l r =
     Intr { l = min_flt combos ; u = max_flt combos } ;;
 let intr_div_op l r = 
     if r.l < 0. && r.u > 0.
-    then IntrErr
+    then Intr { l = neg_infinity ; u = infinity }
     else let combos = [div Down l.l r.l ; div Down l.l r.u ;
                   div Down l.u r.l ; div Down l.u r.u] in
          Intr { l = min_flt combos ; u = max_flt combos } ;;
@@ -225,7 +223,6 @@ let intr_op (left : 'a intr) (right : 'a intr)
              (op : 'a interval -> 'a interval -> 'a intr) = 
     match left, right with
     | Intr l, Intr r  -> op l r
-    | IntrErr, _ | _, IntrErr -> IntrErr
     | IntrBot, _ | _, IntrBot -> IntrBot
 
 let iintr_add l r = intr_op l r iintr_add_op ;;
@@ -298,7 +295,6 @@ let intr_bool_op (left : 'a intr) (right : 'a intr)
                  : ('a intr * 'a intr) = 
     match left, right with
     | Intr l, Intr r -> op l r
-    | IntrErr, _ | _, IntrErr -> (IntrErr, IntrErr)
     | IntrBot, _ | _, IntrBot -> (IntrBot, IntrBot) ;;
 
 let iintr_lt l r = intr_bool_op l r iintr_lt_op ;;
@@ -327,7 +323,6 @@ let iintr_union (iintr1 : int intr) (iintr2 : int intr) : int intr =
         let { l = ii1l ; u = ii1u } = ii1 in
         let { l = ii2l ; u = ii2u } = ii2 in
         Intr { l = min_ints [ii1l ; ii2l]; u = max_ints [ii1u ; ii2u] }
-    | IntrErr, _ | _, IntrErr -> IntrErr
     | IntrBot, _ | _, IntrBot -> IntrBot ;;
 
 (* Float *)
@@ -337,7 +332,6 @@ let intr_union (intr1 : float intr) (intr2 : float intr) : float intr=
         let { l = i1l ; u = i1u } = i1 in
         let { l = i2l ; u = i2u } = i2 in
         Intr { l = min_flt [i1l ; i2l]; u = max_flt [i1u ; i2u] }
-    | IntrErr, _ | _, IntrErr -> IntrErr
     | IntrBot, _ | _, IntrBot -> IntrBot ;;
 
 (* Gets the sections of i1 that don't overlap with i2 *)
@@ -348,9 +342,8 @@ let intr_without (intr1 : float intr) (intr2 : float intr) : float intr list =
                (if i1.l < i2.l
                 then [ intr_of_exc i1.l (min_flt [i2.l ; i1.u]) ; intr_of_exc i2.u i1.u ]
                 else [ intr_of_exc (max_flt [i2.u ; i1.l]) i1.u ])
-    | IntrErr, _ -> [IntrErr]
     | IntrBot, _ -> [IntrBot]
-    | _, IntrErr | _, IntrBot -> [intr1] ;;
+    | _, IntrBot -> [intr1] ;;
 
 (* section of i1 without any of is *)
 let rec intr_withouts (i1 : float intr) (is : float intr list) : float intr list =
@@ -364,9 +357,8 @@ and intr_withouts_inner (acc : float intr list) (lst : float intr list) : float 
 let intr_with (intr1 : float intr) (intr2 : float intr) : float intr =
     match intr1, intr2 with
     | Intr i1, Intr i2 -> intr_of_exc (max_flt [i1.l; i2.l]) (min_flt [i1.u; i2.u])
-    | IntrErr, _ -> IntrErr
     | IntrBot, _ -> IntrBot
-    | _, IntrErr | _, IntrBot -> intr1 ;;
+    | _, IntrBot -> intr1 ;;
 
 (* First element of return is intr1 without any overlap of intr2.  Second element is
  * overlapping portion *)
@@ -389,7 +381,5 @@ let get_sterbenz_intr (intr : float intr) : float intr =
                  intr_of m.u d.l
              else IntrBot
                  (* raise (IntervalError "missing case when getting sterbenz_intervals")) *)
-         | IntrBot, _ | _, IntrBot -> IntrBot
-         | IntrErr, _ | _, IntrErr -> IntrErr)
-    | IntrBot -> IntrBot
-    | IntrErr -> IntrErr ;;
+         | IntrBot, _ | _, IntrBot -> IntrBot)
+    | IntrBot -> IntrBot ;;

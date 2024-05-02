@@ -60,7 +60,6 @@ let str_interval (i : float interval) : string =
 let str_intr (intr : float intr) : string =
     match intr with
     | Intr i -> str_interval i
-    | IntrErr -> "IntrErr"
     | IntrBot -> "_|_" ;;
 
 let str_intrs (is : float intr list) : string =
@@ -73,7 +72,6 @@ let str_iInterval (i : int interval) : string =
 let str_iIntr (intr : int intr) : string =
     match intr with
     | Intr i -> str_iInterval i
-    | IntrErr -> "IntrErr"
     | IntrBot -> "_|_" ;;
 
 let str_seg (seg : segment) : string =
@@ -153,7 +151,6 @@ let csv_interval (i : float interval) : string =
 let csv_intr (intr : float intr) : string =
     match intr with
     | Intr i -> csv_interval i
-    | IntrErr -> "IntrErr,"
     | IntrBot -> "_|_" ;;
 
 let csv_iInterval (i : int interval) : string =
@@ -162,7 +159,6 @@ let csv_iInterval (i : int interval) : string =
 let csv_iIntr (intr : int intr) : string =
     match intr with
     | Intr i -> csv_iInterval i
-    | IntrErr -> "IntrErr,IntrErr,0.0"
     | IntrBot -> "IntrBot,IntrBot,0.0" ;;
 
 let csv_seg (seg : segment) :  string =

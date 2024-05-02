@@ -75,7 +75,7 @@ int main() {
   const double q_h   =  5.0; // Process noise variance, heating
         double q     =  q_s; // Measurement noise variance
         int i;
-  printf("m\ttemp\tp_var\tK\n");
+  //printf("m\ttemp\tp_var\tK\n");
   for(i = 0; i < 14; i ++) {
     m          = sensor_data[i];
     // Update
@@ -92,7 +92,6 @@ int main() {
     } else {
       q = q_s;
     }
-    printf("%8.3lf\t%8.3lf\t%8.3lf\t%8.3lf\n", m, temp, p_var, K);
+    //printf("%8.3lf\t%8.3lf\t%8.3lf\t%8.3lf\n", m, temp, p_var, K);
   }
-  return 0;
 }

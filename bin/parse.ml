@@ -127,8 +127,10 @@ and get_type (t : typ) : ctyp =
 
 
 let rec transform_bexp e =
+    Format.printf "transform_bexp\n" ;
     match e with
     | BinOp (op, l, r, _) ->
+        Format.printf "transform binop\n" ;
         transform_bool_binop op l r
     (*
     | Cil.Const c ->
@@ -174,17 +176,21 @@ let transform_instr i =
     ;;
 
 let rec transform_stmt s =
+    Format.printf "transform_stmt %s\n" (str_stmt s);
     match s.skind with
     | Instr is ->
         transform_instrs is
     | If (c, b1, b2,_,_) -> 
+        Format.printf "transform If\n" ;
         CIf (transform_bexp c, transform_block b1, transform_block b2)
     | Return (e, _) -> (
+        Format.printf "Return" ; 
         match e with
         | Some exp -> CRet (transform_aexp exp)
         (* | _ -> raise (ParseError "Empty return not supported")) *)
         | _ -> CRet (CVal (CInt 1)))
     | Loop (body, _,_, _, _) ->
+        Format.printf "transform Loop\n";
         transform_loop body (hd s.preds)
     | Goto (_,_) ->
         raise (ParseError "Goto unsupported\n")
@@ -199,41 +205,77 @@ let rec transform_stmt s =
     | Block _ ->
         raise (ParseError "Block unsupported\n")
 
+(* DELETE DELETE DELETE *)
+and str_instr (i : instr) : string =
+    match i with
+    | Set ((lhost,_),_,_,_) -> (
+        match lhost with
+        | Var vi -> "Set-" ^ vi.vname
+        | Mem _ -> "Set-Mem")
+    | VarDecl _ -> "VarDecl"
+    | Call _ -> "Call"
+    | Asm _ -> "Asm"
+
+and str_instrs (is : instr list) : string =
+    (List.fold_left (fun acc i -> acc ^ ", " ^ str_instr i) "[" is) ^ "]"
+(* DELETE DELETE DELETE *)
+
 and transform_instrs is =
+    Format.printf "transform_instrs: Instrs length = %d\n" (length is) ;
     match is with
     | i1 :: is ->
+        Format.printf "Instr: %s\n" (str_instr i1) ;
         List.fold_left 
-            (fun acc i -> CCol (acc, transform_instr i)) 
+            (fun acc i -> 
+                Format.printf "Instr: %s\n" (str_instr i) ;
+                CCol (acc, transform_instr i)) 
             (transform_instr i1) 
             is
     | [] -> raise (ParseError "Empty Instr") 
 
-and transform_block b = 
+and str_stmt (s : stmt) : string =
+    match s.skind with
+    | Instr _ -> "Instrs"
+    | Return _ -> "Return"
+    | Goto _ -> "Goto"
+    | ComputedGoto _ -> "ComputedGoto"
+    | Break _ -> "Break"
+    | Continue _ -> "Continue"
+    | If _ -> "If"
+    | Switch _ -> "Switch"
+    | Loop _ -> "Loop"
+    | Block _ -> "Block"
+
+and transform_block (b : block) : cstmt = 
+    Format.printf "transform_block\n" ;
     let stmts = 
         List.filter (fun s -> 
+                        Format.printf "%s\n" (str_stmt s) ;
                         match s.skind with
                         | Break _ -> false 
                         | _ -> true) 
                     b.bstmts in
     match to_cstmts stmts with
     | s1 :: [] -> s1
-    | s1 :: s ->
-        List.fold_left (fun acc s -> CCol (acc, s)) s1 s
+    | s1 :: s -> List.fold_left (fun acc s -> CCol (acc, s)) s1 s
     | [] -> raise (ParseError "Empty block")
 
 
 (* This "disgusting bespoke for-loop mangling" Is needed to get the
-   initialization statment from the previous Instr list *)
+   initialization statement from the previous Instr list *)
 and to_cstmts stmts = 
     List.mapi 
         (fun i s ->
             try let next_stmt = nth stmts (i + 1) in
                 match s.skind, next_stmt.skind with
                 | Instr is, Loop _ ->
-                    next_stmt.preds <- [s] ; (* let the loop know about the init *)
+                    (* let the loop know about the init *)
+                    next_stmt.preds <- [s] ; 
+                    (* then deal with the pre-loop stuff *)
                     transform_instrs (U.remove_last is)
                 | _ -> transform_stmt s
-            with (Failure _) -> transform_stmt s)
+            with 
+            | (Failure _) -> transform_stmt s)
         stmts
 
 
@@ -257,10 +299,12 @@ and transform_loop_block block =
     let cleaned = 
         match (U.last block.bstmts).skind with
         | Instr is -> 
+            Format.printf "%s\n" (str_instrs is) ;
             (U.remove_last block.bstmts) @ [mkStmt (Instr (U.remove_last is))]
         | _ -> raise 
             (ParseError "Expected an Instr at the end of the loop body") 
     in
+        Format.printf "removed last instr from loop body\n" ;
         transform_block {battrs = block.battrs ; bstmts = cleaned}
 
 and extract_condition stmt =

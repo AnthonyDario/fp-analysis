@@ -28,6 +28,7 @@ let analyze filename =
     let amem = if !spec_file = "" 
                then amem_bot 
                else Spec.parse_spec_file !spec_file in
+    Format.printf "parsed specfile\n" ;
     let cstmt = transform (parse_file filename) !fun_name in
     Format.printf "parsed\n" ;
     let astmt = abst_stmt cstmt in

@@ -1,4 +1,3 @@
-open Float
 open List
 
 open Interval
@@ -20,8 +19,7 @@ let seg_of l u err =
 let seg_of_intr i err =
     match i with
     | Intr _ -> { int = i ; err = err } 
-    | IntrBot -> { int = i ; err = 0. }
-    | IntrErr -> { int = i ; err = nan } ;;
+    | IntrBot -> { int = i ; err = 0. } ;;
 
 let seg_overlap s1 s2 = intr_overlap s1.int s2.int ;;
 
@@ -70,10 +68,10 @@ let seg_partition (s1 : segment) (s2 : segment)
     (seg_without s1 s2, seg_with s1 s2) ;;
 
 let ulp_op (l : segment) (r : segment) 
-           (op : float interval -> float interval -> float) = 
+           (op : float interval -> float interval -> float) : float = 
     match l.int, r.int with
     | Intr li, Intr ri -> op li ri
-    | IntrBot, _ | _, IntrBot | IntrErr, _ | _, IntrErr-> nan ;;
+    | IntrBot, _ | _, IntrBot -> 0. ;;
 
 (* For these error functions, o is the result of the interval operation on l
  * and r.
