@@ -191,7 +191,6 @@ let abst_neq = abst_bool_op iintr_neq sf_neq ;;
 (* Abstract Semantics of boolean expressions *)
 (* --------------------------------------------------- *)
 let asem_bexp (exp : abexp) (m : amem) : amem =
-    Format.printf "asem_bexp %s\n" (str_abexp exp) ;
     match exp with
     | ALt (l, r) -> 
         let ((new_l, lid), (new_r, rid)) = abst_lt (asem_aexp l m) (asem_aexp r m) in
@@ -212,7 +211,6 @@ let asem_bexp (exp : abexp) (m : amem) : amem =
 
 (* u_mem : amem -> amem -> amem *)
 let u_amem mem1 mem2 = 
-    Format.printf "u_amem\n" ;
     let { dom = dom1 ; tbl = m1 } = mem1 in
     let { dom = dom2 ; tbl = m2 } = mem2 in
     let dom3 = SS.union dom1 dom2 in
@@ -314,7 +312,6 @@ let rec itr_op_aval (sf_op : stepF -> stepF -> stepF)
 
 
 let widen_aval (a1 : aval) (a2 : aval) : aval =
-    Format.printf "widen_aval\n" ;
     itr_op_aval widen_sf widen_iintr a1 a2 ;;
 
 let narrow_aval (a1 : aval) (a2 : aval) : aval =
@@ -341,7 +338,6 @@ let amem_op (mem1 : amem) (mem2 : amem)
               mem1 (SS.elements mem2.dom) ;;
 
 let widen_amem (mem1 : amem) (mem2 : amem) : amem =
-    Format.printf "widen_amem\n" ;
     amem_op mem1 mem2 widen_aval_opt ;;
 
 let narrow_amem (mem1 : amem) (mem2 : amem) : amem =
@@ -353,47 +349,33 @@ let rec abst_iter (f : amem -> amem) (m : amem) (n : int) : amem =
 
 (* upward iteration *)
 and abst_iter_up (f : amem -> amem) (m : amem) (n : int) : amem =
-    Format.printf "abst_iter %d\n" n ;
     Format.print_flush () ;
     (* input_line stdin ; *)
     if n = 0 then abst_iter_up_w f m else 
-    let next = (Format.printf "next\n") ; f m in
+    let next = f m in
     let unioned =  u_amem m next in
-    (Format.printf "union %s\nU\n%s\n=%s\n\n" (str_amem m) (str_amem next) (str_amem unioned));
     if amem_eq unioned m 
     then unioned
     else abst_iter_up f unioned (n - 1)
 
 (* with widening *)
 and abst_iter_up_w (f : amem -> amem) (m : amem) : amem =
-    Format.printf "abst_iter_w\n" ;
     let next = f m in
     let widened = widen_amem m next in
-    Format.printf "widened\n" ;
     if amem_eq widened m 
     then widened
-    else (
-        Format.printf "unequal widening:\n%s\n" (str_amem widened) ;
-        abst_iter_up_w f widened
-        )
+    else abst_iter_up_w f widened
 
 and abst_iter_down (f : amem -> amem) (m : amem) : amem =
     let next = f m in
     let narrowed = narrow_amem m next in
     if amem_eq narrowed m
     then narrowed
-    else (
-        Format.printf "unequal narrowing:\n %s\n /\ \n%s\n" (str_amem m) (str_amem next);
-        Format.print_flush () ;
-        (* input_line stdin ; *)
-        abst_iter_down f narrowed
-        );;
+    else abst_iter_down f narrowed;;
 
 let comp f g x = f (g x) ;;
 
 let rec asem_stmt (exp : astmt) (iters : int) (m : amem) : amem =
-    Format.printf "asem_stmt: %s\n\n" (Printing.str_astmt exp) ;
-    (* Format.printf "asem_stmt amem = %s\n\n" @@ Printing.str_amem m ; *)
     match exp with
     | AAsgn ((id, idx), e) -> 
         let ident = if Option.is_some idx 

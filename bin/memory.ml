@@ -26,57 +26,7 @@ let fail_lookup (x : string) (m : (string, aval) Hashtbl.t) =
 let amem_bot = { dom = SS.empty ; tbl = Hashtbl.create 5000 }
 let lookup (m : amem) (x : string) : aval option = Hashtbl.find_opt m.tbl x ;;
 
-(* ___________________________________ *)
-let str_interval (i : float interval) : string = 
-    "[" ^ Format.sprintf "%20.30f" i.l ^ 
-    " ; " ^ Format.sprintf "%20.30f" i.u ^ "]" ;;
-
-let str_intr (intr : float intr) : string =
-    match intr with
-    | Intr i -> str_interval i
-    | IntrBot -> "_|_" ;;
-
-let str_intrs (is : float intr list) : string =
-    fold_left (fun acc i -> acc ^ str_intr i ^ ", ") "{" is ^ "}" ;;
-
-let str_iInterval (i : int interval) : string =
-        "[" ^ Int.to_string i.l ^ 
-        " ; " ^ Int.to_string i.u ^ "]" ;;
-
-let str_iIntr (intr : int intr) : string =
-    match intr with
-    | Intr i -> str_iInterval i
-    | IntrBot -> "_|_" ;;
-
-let str_seg (seg : segment) : string =
-    "(" ^ str_intr seg.int ^ ", " ^ Format.sprintf "%20.30f" seg.err ^ ")" ;;
-
-let str_segs (segs : segment list) : string =
-    fold_left (fun acc s -> acc ^ str_seg s ^ ", ") "{" segs ^ "}" ;;
-
-let str_sf (trm : stepF) : string = 
-    match trm with
-    | StepF ies -> str_segs ies
-    | Bot       -> "_" ;;
-
-let str_aval (v : aval) : string =
-    match v with
-    | AInt i      -> str_iIntr i
-    | AFloat Bot  -> "_|_"
-    | AFloat trm  -> str_sf trm 
-    | AArr (_, _) -> "AArr" 
-    | ABot        -> "ABot" ;;
-
-let str_id (id : id) : string = 
-    match id with
-    | Id n -> "ID(" ^ n ^ ")"
-    | Const -> "Const" 
-    | ArrElem (n, idxs) -> n ^ "[" ^ str_iIntr idxs ^ "]" ;;
-
-(* ___________________________________ *)
-
 let rec amem_update (n : id) (v : aval) (m : amem) : amem = 
-    Format.printf "amem_update %s with %s\n" (str_id n) (str_aval v);
     let { dom = mdom ; tbl = tbl } = m in
     let new_tbl = Hashtbl.copy tbl in
     match n with 
@@ -85,23 +35,18 @@ let rec amem_update (n : id) (v : aval) (m : amem) : amem =
         { dom = SS.add id mdom ; 
           tbl = new_tbl }
     | ArrElem (id, idxs) -> (
-        Format.printf "ArrElem: %s[%s]\n" id (str_iIntr idxs) ;
         match lookup m id with
         | Some (AArr (arr, l)) -> (
-            Format.printf "amem_update ArrElem (Some)\n" ;
-            Format.print_flush () ;
             let updated = AArr ((arr_update arr idxs v), update_len l idxs) in
             Hashtbl.replace new_tbl id updated ;
             { dom = SS.add id mdom ; 
               tbl = new_tbl })
         | None -> (
-            Format.printf "amem_update ArrElem (None)\n" ; 
-            Format.print_flush() ;
             let updated = AArr ((arr_update (arr_bot ()) idxs v), (upper idxs) + 1) in
             Hashtbl.replace new_tbl id updated ;
             { dom = SS.add id mdom ;
               tbl = new_tbl })
-        | Some av -> failwith ("Attempting to index a non-array: " ^ str_aval av))
+        | Some av -> failwith ("Attempting to index a non-array"))
     | Const -> m 
 
 and update_len (l : int) (itr : int intr) : int =
