@@ -174,12 +174,23 @@ let csv_sf (name : string) (trm : stepF) : string =
     | StepF ies -> csv_segs name ies
     | Bot       -> name ^ ",flt,Bot,Bot,0.0" ;;
 
+let rec csv_aval (n : string) (av : aval) : string = 
+    match av with 
+    | AInt ii      -> n ^ ",int," ^ csv_iIntr ii
+    | AFloat et    -> csv_sf n et
+    | AArr (ar, l) -> csv_arr n ar l
+    | ABot         -> n ^ ",bot,-,-,-"
+
+and csv_arr (n : string) (ar : (int, aval) Hashtbl.t) (l : int) : string =
+    fold_left (fun acc i -> 
+              Format.printf "csv_arr %d\n" i ;
+               acc ^ (csv_aval (n ^ "[" ^ Int.to_string i ^ "]") (Hashtbl.find ar i) ^ "\n"))
+              ""
+              (int_seq l) ;;
+
 let csv_avar (n : string) (amem : amem) : string = 
-    match lookup amem n with
-    | Some (AInt ii)    -> n ^ ",int," ^ csv_iIntr ii
-    | Some (AFloat et)  -> csv_sf n et
-    | Some (AArr (_,_)) -> n ^ ",arr,low,high,err"
-    | Some ABot         -> n ^ ",bot,-,-,-"
+    match (lookup amem n) with
+    | Some av -> csv_aval n av
     | None -> n ^ " -> _" ;;
 
 let csv_amem (amem : amem) : string =
