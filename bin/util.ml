@@ -48,5 +48,9 @@ let map_opt (f : 'a -> 'b) (x : 'a option) (default : 'b) : 'b =
     | Some v -> f v
     | None   -> default ;;
 
+(* Create a list of sequential numbers from l to h *)
+let int_seq_lh l h = List.init (h - l) (fun x -> l + x) ;;
+
 (* Create a list of sequential numbers of length l starting from 0 *)
 let int_seq l = List.init l (fun x -> x) ;;
+

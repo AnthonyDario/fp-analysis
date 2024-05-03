@@ -4,6 +4,7 @@ module U = Util
 open List
 open GoblintCil
 open Tree
+open Printing
 
 module E = Errormsg
 module F = Frontc
@@ -32,7 +33,7 @@ let transform_const c =
         raise (ParseError "CEnum")
     ;;
 
-let rec transform_arith_binop op l r =
+let rec transform_arith_binop (op : binop) (l : exp) (r : exp) : caexp =
     let new_l, new_r = (transform_aexp l, transform_aexp r) in
     match op with
     | PlusA ->
@@ -43,6 +44,7 @@ let rec transform_arith_binop op l r =
         CMul (new_l, new_r)
     | Div ->
         CDiv (new_l, new_r)
+    | IndexPI -> failwith "indexpi"
     | _ -> 
         raise (ParseError "Expected Arithmetic Binop\n") ; 
         (*
@@ -109,7 +111,13 @@ and transform_aexp (e : exp) : caexp =
 and transform_lval ((lhost, offset) : lval) : (string * caexp option * ctyp) =
     match lhost with
     | Var vi -> (vi.vname, offset_index offset, get_type_varinfo vi)
-    | _ -> raise (ParseError "lvalues of type [T] not supported\n")
+    (* Assigning to pointers, assuming only arrays now *)
+    | Mem l -> (
+        match l with
+        (* Binop because x[exp] is a binary operation apparently *)
+        | BinOp (IndexPI, (Lval ((Var vi), _)), ex2, t) ->
+            (vi.vname, Some (transform_aexp ex2), get_type t)
+        | _ -> raise (ParseError "Non-array pointers are not supported\n"))
 
 and offset_index (off : offset) : caexp option = 
     match off with
@@ -123,6 +131,7 @@ and get_type (t : typ) : ctyp =
     | TInt   (_,_) -> IntTyp
     | TFloat (_,_) -> FloatTyp
     | TArray (t,_,_) -> ArrTyp (get_type t) 
+    | TPtr (t, _) -> get_type t
     | _ -> raise (ParseError "Unsupported variable type") ;;
 
 
@@ -161,9 +170,9 @@ and transform_bool_binop op l r =
 
 let transform_instr i =
     match i with
-    | Set (lv, e, _, _) ->
+    | Set (lv, e, _, _) -> (
         let (name, index, _) = transform_lval lv in
-        CAsgn ((name, index), (transform_aexp e))
+        CAsgn ((name, index), (transform_aexp e)))
     | VarDecl (_,_) ->
         raise (ParseError "Variable declarations are not supported") ;
     | Call (_,_,_,_,_) ->
@@ -174,7 +183,7 @@ let transform_instr i =
 
 let rec transform_stmt s =
     match s.skind with
-    | Instr is -> transform_instrs is
+    | Instr is -> (transform_instrs is)
     | If (c, b1, b2,_,_) -> 
         CIf (transform_bexp c, transform_block b1, transform_block b2)
     | Return (e, _) -> (
