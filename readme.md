@@ -3,10 +3,12 @@ numerical C code.  It is based upon abstract interpretation and uses the novel
 abstract domain of step functions to represent the floating point error.
 
 # Dependencies
-You will need [CIL](https://github.com/goblint/cil) installed:
+You will need [CIL](https://github.com/goblint/cil) and ocaml rounding
+modes installed:
 
 ```
-opam install goblint-cil
+opam pin add -y round git@github.com:tyabu12/ocaml-round.git
+opam install goblint-cil round
 ```
 
 # Running
