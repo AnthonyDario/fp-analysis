@@ -15,13 +15,13 @@
 // :pre (and (<= -100 u 100) (<= 20 v 20000) (<= -30 T 50))
 double doppler1(double u, double v, double T) {
 	double t1 = 331.4 + (0.6 * T);
-    double r = ((-1 * t1) * v) / ((t1 + u) * (t1 + u));
+    double r = (-t1 * v) / ((t1 + u) * (t1 + u));
     return r;
 }
 
 // :pre (and (<= -15 x1 15) (<= -15 x2 15) (<= -15 x3 15))
 double rigidBody1(double x1, double x2, double x3) {
-	double r = (((-1 * (x1 * x2)) - ((2.0 * x2) * x3)) - x1) - x3;
+	double r = (((-(x1 * x2)) - ((2.0 * x2) * x3)) - x1) - x3;
     return r;
 }
 
@@ -121,6 +121,6 @@ double cav10(double x) {
 
 // :pre (<= 0 u 1)
 double bspline3(double u) {
-	double ret = (-1 * ((u * u) * u)) / 6.0;
+	double ret = (-((u * u) * u)) / 6.0;
     return ret;
 }

@@ -82,6 +82,12 @@ and transform_aexp (e : exp) : caexp =
         | TInt _ | TFloat _ ->  (* TODO: note the loss of precision for float -> int casts *)
             transform_aexp e
         | _ -> raise (ParseError "Unsupported Cast\n") );
+    | UnOp (op,exp,_) -> (
+        match op with
+        | Neg  -> CMul (CVal (CFloat (-0.1)), (transform_aexp exp))
+        | BNot -> raise (ParseError "Bitwise complement not supported\n")
+        | LNot -> raise (ParseError "logical not unsupported\n")
+        )
     | Real _ ->
         raise (ParseError "Real unsupported\n") 
     | AddrOf (_) ->
@@ -96,8 +102,6 @@ and transform_aexp (e : exp) : caexp =
         raise (ParseError "SizeOfStr unsupported\n")
     | AlignOf _ ->
         raise (ParseError "AlignOf unsupported\n")
-    | UnOp (_,_,_) ->
-        raise (ParseError "UnOp unsupported\n")
     | Question (_,_,_,_) ->
         raise (ParseError "Question unsupported\n")
     | AddrOfLabel _ ->
