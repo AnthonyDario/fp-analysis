@@ -18,7 +18,7 @@ let speclist =
         ("-f", Arg.Set_string fun_name, "Specify function to analyze");
         ("-sf", Arg.Set_string spec_file, "Specify variable range file");
         ("-test", Arg.Set testing, "Run tests");
-        ("-out", Arg.Set out_file, "output csv filename");
+        ("-out", Arg.Set_string out_file, "output csv filename");
     ] ;;
 
 let () = Arg.parse speclist anon_fun usage_msg ;;
@@ -47,4 +47,4 @@ let () =
     else
         let mem = (analyze !input_file) in
         (* Format.printf "%s\n\n" (str_amem mem) ; *)
-        write_file out_file mem ;;
+        write_file !out_file mem ;;
