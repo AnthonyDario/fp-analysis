@@ -94,7 +94,8 @@ let rec asem_aexp (exp : aaexp) (mem : amem) : (aval * id) =
     | AAcc (n, i, _) -> (
         let index = Option.map (fun x -> fst @@ asem_aexp x mem) i in
         match lookup mem n with
-        | Some (AArr (a,_)) -> (index_array a index, ArrElem (n, extract_index i mem))
+        | Some (AArr (a,_)) -> 
+            (index_array a index, ArrElem (n, extract_index i mem))
         | Some v -> raise (InvalidAccessException 
                            ("Attempting to access non-array (" ^ n ^ 
                             ") with non-integer: " ^
@@ -349,7 +350,7 @@ let rec abst_iter (f : amem -> amem) (m : amem) (n : int) : amem =
 
 (* upward iteration *)
 and abst_iter_up (f : amem -> amem) (m : amem) (n : int) : amem =
-    Format.print_flush () ;
+    (* Format.print_flush () ; *)
     (* input_line stdin ; *)
     if n = 0 then abst_iter_up_w f m else 
     let next = f m in

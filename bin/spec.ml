@@ -75,14 +75,9 @@ let parse_line (l : string) : (string * aval) =
 (* grab each line and turn it into a value *)
 let parse_spec_file (filename : string) : amem = 
     let ic = open_in filename in
-    let ret = 
     fold_left (fun acc l -> 
         let (n, aval) = parse_line l in
         amem_update (Id n) aval acc) 
         amem_bot 
         (input_lines ic) 
-    in
-    Format.printf "Parsed spec file:\n%s\n" (Printing.str_amem ret);
-    Format.print_flush () ;
-    ret
     ;;

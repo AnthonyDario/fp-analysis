@@ -162,9 +162,16 @@ let csv_iIntr (intr : int intr) : string =
     | IntrBot -> "IntrBot,IntrBot,0.0" ;;
 
 let csv_seg (seg : segment) :  string =
-    Format.sprintf "%20.30e" (lower seg.int) ^ "," ^
-    Format.sprintf "%20.30e" (upper seg.int) ^ "," ^
-    Format.sprintf "%20.30e" seg.err;;
+    match seg.int with
+    | Intr i ->
+        Format.sprintf "%20.30e" i.l ^ "," ^
+        Format.sprintf "%20.30e" i.u ^ "," ^
+        Format.sprintf "%20.30e" seg.err
+    | _ ->
+        Format.sprintf "_|_" ^ "," ^
+        Format.sprintf "_|_" ^ "," ^
+        Format.sprintf "%20.30e" seg.err
+    ;;
 
 let csv_segs (name : string) (segs : segment list) : string =
     fold_left (fun acc s -> acc ^ name ^ ",flt," ^ csv_seg s ^ "\n") "" segs ;;
