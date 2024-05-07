@@ -9,6 +9,7 @@ let input_file = ref "" ;;
 let fun_name = ref "" ;;
 let testing = ref false ;;
 let spec_file = ref "" ;;
+let out_file = ref "" ;;
 
 let anon_fun filename = input_file := filename ;;
 
@@ -17,6 +18,7 @@ let speclist =
         ("-f", Arg.Set_string fun_name, "Specify function to analyze");
         ("-sf", Arg.Set_string spec_file, "Specify variable range file");
         ("-test", Arg.Set testing, "Run tests");
+        ("-out", Arg.Set out_file, "output csv filename");
     ] ;;
 
 let () = Arg.parse speclist anon_fun usage_msg ;;
@@ -32,7 +34,7 @@ let analyze filename =
     let cstmt = transform (parse_file filename) !fun_name in
     Format.printf "parsed\n" ;
     let astmt = abst_stmt cstmt in
-    Format.printf "abstracted:\n%s\n\n" (Printing.str_cstmt cstmt);
+    Format.printf "abstracted\n";
     abst_interp astmt amem ;;
 
 let write_file name mem =
@@ -45,4 +47,4 @@ let () =
     else
         let mem = (analyze !input_file) in
         (* Format.printf "%s\n\n" (str_amem mem) ; *)
-        write_file "out.csv" mem ;;
+        write_file out_file mem ;;
