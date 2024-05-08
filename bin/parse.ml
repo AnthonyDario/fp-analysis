@@ -84,7 +84,7 @@ and transform_aexp (e : exp) : caexp =
         | _ -> raise (ParseError "Unsupported Cast\n") );
     | UnOp (op,exp,_) -> (
         match op with
-        | Neg  -> CMul (CVal (CFloat (-0.1)), (transform_aexp exp))
+        | Neg  -> CMul (CVal (CFloat (-1.)), (transform_aexp exp))
         | BNot -> raise (ParseError "Bitwise complement not supported\n")
         | LNot -> raise (ParseError "logical not unsupported\n")
         )
