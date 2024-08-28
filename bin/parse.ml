@@ -14,7 +14,7 @@ exception ParseError of string ;;
 
 let parse_file fname = 
     let _, cil = F.parse_with_cabs fname () in
-    Rmtmps.removeUnusedTemps cil ;
+    RmUnused.removeUnused cil ;
     cil ;;
 
 let transform_const c =
@@ -190,7 +190,7 @@ let rec transform_stmt s =
     | Instr is -> (transform_instrs is)
     | If (c, b1, b2,_,_) -> 
         CIf (transform_bexp c, transform_block b1, transform_block b2)
-    | Return (e, _) -> (
+    | Return (e, _, _) -> (
         match e with
         | Some exp -> CRet (transform_aexp exp)
         | _ -> CRet (CVal (CInt 1)))

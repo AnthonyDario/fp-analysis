@@ -3,6 +3,8 @@ numerical C code.  It is based upon abstract interpretation and uses the novel
 abstract domain of step functions to represent the floating point error.
 
 # Dependencies
+First, install OCaml from [here](https://ocaml.org/install).
+
 You will need [CIL](https://github.com/goblint/cil) and ocaml rounding
 modes installed:
 
