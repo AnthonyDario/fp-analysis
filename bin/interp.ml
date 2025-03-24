@@ -346,13 +346,11 @@ let narrow_amem (mem1 : amem) (mem2 : amem) : amem =
 
 (* Bounded iteration with widening after n iterations *)
 let rec abst_iter (f : amem -> amem) (m : amem) (n : int) : amem =
-    (abst_iter_down f (abst_iter_up f m n))
+    (abst_iter_up f m n)
 
 (* upward iteration *)
 and abst_iter_up (f : amem -> amem) (m : amem) (n : int) : amem =
-    (* Format.print_flush () ; *)
-    (* input_line stdin ; *)
-    if n = 0 then abst_iter_up_w f m else 
+    if n = 0 then m else
     let next = f m in
     let unioned =  u_amem m next in
     if amem_eq unioned m 

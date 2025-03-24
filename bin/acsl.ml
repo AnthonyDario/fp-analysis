@@ -5,25 +5,8 @@ open Tree
 open Segment
 open Stepfunction
 open Memory
+open Util
 
-(* Output ACSL Specifications *)
-
-(* Want an ensures clause that gives output ranges as well as floating point error *)
-
-
-(* ensures x >= 5.0 && x <= 7.0 && \round_error(x) <= 0.034 *)
-
-(*
-/*@
-ensures p >= 0.3 && p < 0.7;
-behavior p_seg1:
-    assumes p >= 0.3 && p < 0.5;
-    ensures \roundoff(p) <= 0.0034;
-behavior p_seg2:
-    assumes p >= 0.5 && p < 0.7;
-    ensures \roundoff(p) <= 0.0044;
-*/
-*)
 
 let acsl_iInterval (n : string) (i : int interval) : string = 
     Format.sprintf "ensures %s >= %i && %s <= %i;\n" n i.l n i.u
@@ -39,7 +22,7 @@ let acsl_iIntr (n : string) (intr : int intr) : string =
 
 let acsl_seg_behavior (name : string) (i : float interval) (err : float) (num : int) : string = 
     Format.sprintf 
-        "behavior %s_seg%i:\n\tassumes %s >= %20.30e && %s <= %20.30e;\n\tensures \\roundoff(%s) <= %20.30e;\n"
+        "behavior %s_seg%i:\n\tassumes %s >= %20.30e && %s <= %20.30e;\n\tensures \\round_error(%s) <= %20.30e;\n"
         name num name i.l name i.u name err
 ;;
     
@@ -68,17 +51,19 @@ let acsl_sf (name : string) (trm : stepF) : string =
     | Bot       -> name ^ " = bot\n"
 ;;
 
-(*
-let acsl_arr 
-*)
 
-
-let acsl_aval (n : string) (av : aval) : string =
+let rec acsl_aval (name : string) (av : aval) : string =
     match av with
-    | AInt ii      -> acsl_iIntr n ii
-    | AFloat et    -> acsl_sf n et
-    | AArr (ar, l) -> "array\n"
-    | ABot         -> n ^ " = bot\n" 
+    | AInt ii      -> acsl_iIntr name ii
+    | AFloat et    -> acsl_sf name et
+    | AArr (ar, l) -> acsl_arr name ar l
+    | ABot         -> name ^ " = bot\n" 
+
+and acsl_arr (name : string) (ar : (int, aval) Hashtbl.t) (l : int) : string =
+    fold_left 
+        (fun acc i -> acc ^ (acsl_aval (name ^ "[" ^ Int.to_string i ^ "]") (Hashtbl.find ar i) ^ "\n"))
+        ""
+        (int_seq l)
 ;;
 
 
@@ -88,21 +73,7 @@ let acsl_avar (n : string) (amem : amem) : string =
     | None -> n ^ " -> _" ;;
 
 
+(* Output ACSL Specifications *)
 let acsl_amem (amem : amem) : string =
     (fold_left (fun acc x -> acc ^ (acsl_avar x amem) ^ "\n")
               "/*@\n" (SS.elements amem.dom)) ^ "*/" ;;
-
-(* Reference from the CSV printing *)
-(*
-module SS = Set.Make(String) ;;
-
-(* Memory modeled as a function.  The domain is tracked. *)
-type amem = {
-    dom : SS.t ;
-    tbl : (string, aval) Hashtbl.t ;
-}
-
-let csv_amem (amem : amem) : string =
-    fold_left (fun acc x -> acc ^ (csv_avar x amem) ^ "\n")
-              "var,type,low,high,err\n" (SS.elements amem.dom) ;;
-              *)

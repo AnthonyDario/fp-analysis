@@ -161,7 +161,7 @@ and binade_split_seg (s : segment) : segment list =
     map (fun i -> { int = i ; err = s.err +. ulp_intr i }) is ;;
 
 let eadd (l : stepF) (r : stepF) : stepF = 
-    Format.printf "eadd %d + %d\n" (length (get_segs l)) (length (get_segs r)) ;
+    (* Format.printf "eadd %d + %d\n" (length (get_segs l)) (length (get_segs r)) ; *)
     eop l r seg_add err_add_prop ;;
 
 let esub (l : stepF) (r : stepF) : stepF = 

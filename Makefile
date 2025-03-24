@@ -21,8 +21,9 @@ run: clean
 	dune exec --profile release -- analyzer -f cav10 c/rosa/rosa.c -sf c/rosa/cav10.spec -out cav10.csv
 	dune exec --profile release -- analyzer -f bspline3 c/rosa/rosa.c -sf c/rosa/bspline3.spec -out bspline3.csv
 
-acsltest: clean
+test-acsl: clean
 	dune exec --profile release -- analyzer -f doppler1 c/rosa/rosa.c -sf c/rosa/doppler1.spec -acsl -out doppler1.acsl
+	dune exec --profile release -- analyzer -f foo c/simple-array-test.c -sf c/simple-array-test.spec -acsl -out simple-array-test.acsl
 
 
 test: clean
