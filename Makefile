@@ -1,4 +1,4 @@
-all : test run
+all: test run
 
 run: clean
 	#dune exec --profile release -- analyzer -f main c/kalman/kettle.c -sf c/kalman/kettle.spec
@@ -20,6 +20,10 @@ run: clean
 	dune exec --profile release -- analyzer -f sineOrder3 c/rosa/rosa.c -sf c/rosa/sineOrder3.spec -out sineOrder3.csv
 	dune exec --profile release -- analyzer -f cav10 c/rosa/rosa.c -sf c/rosa/cav10.spec -out cav10.csv
 	dune exec --profile release -- analyzer -f bspline3 c/rosa/rosa.c -sf c/rosa/bspline3.spec -out bspline3.csv
+
+acsltest: clean
+	dune exec --profile release -- analyzer -f doppler1 c/rosa/rosa.c -sf c/rosa/doppler1.spec -acsl -out doppler1.acsl
+
 
 test: clean
 	dune exec --profile release -- analyzer -test
