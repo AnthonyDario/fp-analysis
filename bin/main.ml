@@ -46,7 +46,8 @@ let write_file name mem =
     let oc = open_out name in
     (* Printf.fprintf oc "%s" (Printing.csv_amem mem) *)
     if !acsl
-    then Printf.fprintf oc "%s" (Acsl.acsl_amem mem)
+    then (Printf.fprintf oc "%s" (Acsl.acsl_amem mem) ;
+          Printf.fprintf oc "%s" (get_fun_decl (parse_file !input_file) !fun_name))
     else
         if !csv 
         then Printf.fprintf oc "%s" (Printing.csv_amem mem);;

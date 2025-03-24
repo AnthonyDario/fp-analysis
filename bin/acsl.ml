@@ -76,4 +76,4 @@ let acsl_avar (n : string) (amem : amem) : string =
 (* Output ACSL Specifications *)
 let acsl_amem (amem : amem) : string =
     (fold_left (fun acc x -> acc ^ (acsl_avar x amem) ^ "\n")
-              "/*@\n" (SS.elements amem.dom)) ^ "*/" ;;
+              "/*@\n" (SS.elements amem.dom)) ^ "*/\n" 

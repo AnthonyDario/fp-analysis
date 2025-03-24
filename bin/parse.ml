@@ -335,3 +335,77 @@ let transform file fun_name =
             | GFun (dec,_) -> dec.svar.vname = fun_name
             | _ -> false) 
         file.globals ) ;;
+
+(* Getting the function declaration *)
+(* ----------------------------------------- *)
+let get_int_string (i : ikind) : string =
+    match i with
+    | IChar      -> "unsigned char"
+    | ISChar     -> "signed char"
+    | IUChar     -> "unsigned char"
+    | IBool      -> "bool"
+    | IInt       -> "int"
+    | IUInt      -> "unsigned int"
+    | IShort     -> "short"
+    | IUShort    -> "unsigned short"
+    | ILong      -> "long"
+    | IULong     -> "unsigned long"
+    | ILongLong  -> "long long"
+    | IULongLong -> "unsigned long long"
+    | IInt128    -> "__int128"
+    | IUInt128   -> "unsigned __int128"
+;;
+
+
+let get_float_string (f : fkind) : string =
+    match f with
+    | FFloat             -> "float"
+    | FDouble            -> "double"
+    | FLongDouble        -> "long double"
+    | FFloat128          -> "float128"
+    | FComplexFloat      -> "float _Complex"
+    | FComplexDouble     -> "double _Complex"
+    | FComplexLongDouble -> "long double _Complex"
+    | FComplexFloat128   -> "_float128 _Complex"
+;;
+
+
+let rec get_typ_string (t : typ) : string =
+    match t with
+    | TVoid  _      -> "void"
+    | TInt   (i, _) -> get_int_string i
+    | TFloat (f, _) -> get_float_string f
+    | TPtr   (ty, _) -> get_typ_string ty ^ "*"
+    | TArray (ty, _, _) -> get_typ_string ty ^ "*"
+    | TFun (ty, params,_,_) -> get_typ_string ty
+    | _ -> raise (ParseError "Function type not supported")
+
+
+let get_decl_params (formals : varinfo list) =
+    let params = (fold_left (fun acc f -> acc ^ Format.sprintf ", %s : %s" f.vname (get_typ_string f.vtype)) "" formals)
+    in 
+        if String.length params > 2 then String.sub params 2 ((String.length params) - 2)
+        else params
+
+
+let get_decl_string f = 
+    let { svar = fn ; sformals = formals ; } = f in
+    let { vname = name ; vtype = typ ; } = fn in
+    Format.sprintf "%s %s (%s);" (get_typ_string typ) name (get_decl_params formals) ;;
+
+
+let get_global_decl g =
+    match g with
+    | GFun (dec,_) ->
+        get_decl_string dec
+    | _ -> 
+        raise (ParseError "Non-function globals not supported\n") ;;
+
+
+let get_fun_decl file fun_name =
+    get_global_decl
+        (List.find (fun g ->
+            match g with
+            | GFun (dec,_) -> dec.svar.vname = fun_name
+            | _ -> false)
+        file.globals) ;;
