@@ -7,9 +7,9 @@
 (source
  (github username/reponame))
 
-(authors "Author Name")
+(authors "Anthony Dario")
 
-(maintainers "Maintainer Name")
+(maintainers "Anthony Dario")
 
 (license LICENSE)
 
@@ -17,10 +17,7 @@
 
 (package
  (name analyzer)
- (synopsis "A short synopsis")
- (description "A longer description")
- (depends ocaml dune)
- (tags
-  (topics "to describe" your project)))
+ (synopsis "A static analyzer for floating-point error.")
+ (depends ocaml dune))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
