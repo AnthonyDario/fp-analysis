@@ -88,13 +88,6 @@ and combine_seg (s1 : segment) (s2 : segment) : segment =
            (max_flt [upper s1.int ; upper s2.int]) s1.err
 ;;
 
-(* Compare segments by error, break ties by lower bound *)
-let seg_compare (s1 : segment) (s2 : segment) : int =
-    let err_cmp = Float.compare s2.err s1.err in
-    if err_cmp = 0 
-    then Float.compare (lower s2.int) (lower s1.int)
-    else err_cmp ;;
-
 let cnt = ref 0;;
 let tot = ref 0;;
 
