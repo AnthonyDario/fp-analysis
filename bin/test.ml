@@ -13,8 +13,9 @@ open Parse
 open Memory
 
 (* Testing functions *)
-let test b m = if not b then failwith m ;;
-let test_eq a1 a2 m = test (a1 = a2) m ;;
+let test (b : bool) (m : string) = if not b then failwith m ;;
+
+let test_eq (a1 : 'a) (a2 : 'a) (m : string) = test (a1 = a2) m ;;
 
 let test_in vals lst =
     (fold_left (fun acc i -> acc && exists (fun x -> i = x) lst)
@@ -87,6 +88,15 @@ let intr_contains_test () =
     test (contains i1 3.) "contains doesn't capture inner value" ;
     test (contains i1 4.) "contains doesn't capture upper bound" ;
     test (not (contains i1 5.)) "contains returns true for uncontained value" ;;
+
+
+let intr_adjacent_test () =
+    test (not (intr_adjacent i1 i1)) "intr_adjacent includes same interval" ;
+    test (not (intr_adjacent i1 i2)) "intr_adjacent includes overlapping upper bound" ;
+    test (not (intr_adjacent i2 i1)) "intr_adjacent includes overlapping lower bound" ;
+    test (intr_adjacent i1 (intr_of 1. (Float.pred (lower i1)))) "intr_adjacent misses lower bound" ;
+    test (intr_adjacent i1 (intr_of (Float.succ (upper i1)) 5.)) "intr_adjacent misses upper bound" ;
+;;
 
 
 let intr_overlap_test () =
@@ -235,6 +245,7 @@ let intr_without_test () =
 let intr_testing () =
     intr_of_test() ;
     intr_contains_test () ;
+    intr_adjacent_test () ;
     intr_overlap_test () ;
     intr_ops_test () ;
     intr_mags_test () ;
