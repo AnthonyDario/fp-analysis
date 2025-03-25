@@ -68,25 +68,17 @@ let high_seg (sf : stepF) : segment =
 (* Arithmetic operators *)
 (* ------------------------- *)
 
-(* find overlapping segments *)
-let rec combine_segs (segs : segment list) : segment list =
-    let total = length segs in
-    let curr = ref 0 in
-    fold_left (fun acc s -> 
-        curr := !curr + 1 ;
-        Format.printf "\rcombine %d/%d" !curr total ; Format.print_flush() ;
-        combine_elem s acc) [] segs
-and combine_elem (s1 : segment) (segs : segment list) =
     match segs with
     | x :: xs -> 
         if s1.err = x.err && seg_overlap s1 x
         then (combine_seg x s1) :: xs 
         else x :: combine_elem s1 xs
     | [] -> [s1] 
-and combine_seg (s1 : segment) (s2 : segment) : segment =
+let combine_seg (s1 : segment) (s2 : segment) : segment =
     seg_of (min_flt [lower s1.int ; lower s2.int]) 
            (max_flt [upper s1.int ; upper s2.int]) s1.err
 ;;
+
 
 let cnt = ref 0;;
 let tot = ref 0;;

@@ -472,17 +472,6 @@ let append_test () =
     test_sfs (sf_append x (get_segs y)) out "sf_append test failed" ;;
 
 
-let combine_segs_test () =
-    test_lst (combine_segs [ seg_of 0. 2. 0.1 ; seg_of 1. 3. 0.1])
-             [seg_of 0. 3. 0.1]
-             "combine_segs failed overlap test" ;
-    test_lst (combine_segs [ seg_of 0. 2. 0.11 ; seg_of 1. 3. 0.1 ; seg_of (-1.) 2. 0.11]) 
-             [seg_of (-1.) 2. 0.11 ; seg_of 1. 3. 0.1]
-             "combine_segs failed list test" ;
-    test_lst (combine_segs [ seg_of 0. 1. 0.1 ; seg_of 1. 2. 0.1]) 
-             [seg_of 0. 2. 0.1]
-             "combine_segs failed adjacent test" ;;
-
 let merge_test () =
     let test = sf_append x (get_segs y) in 
     let happy_test = StepF [ seg_of 0. 1. 0.1 ; seg_of 1. 2. 0.2 ] in
@@ -630,7 +619,6 @@ let sf_testing () =
     range_tests () ;
     get_segs_test () ;
     append_test () ;
-    combine_segs_test () ;
     merge_test () ;
     sf_arith_tests () ;
     sf_lt_test () ;

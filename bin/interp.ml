@@ -393,6 +393,9 @@ let rec asem_stmt (exp : astmt) (iters : int) (m : amem) : amem =
     | ACol (s1, s2) -> asem_stmt s2 iters (asem_stmt s1 iters m) 
     | ARet _ -> m
 
+(* Branch Instability *)
+(* ---------------------------- *)
+
 (* Find the unstable region of a condition *)
 (* A little bit of a hack since abst_eq computes the overlap *)
 and filter_unstable (exp : abexp) (m : amem) : amem =
