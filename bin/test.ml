@@ -13,6 +13,7 @@ open Parse
 open Memory
 
 (* Testing functions *)
+(* ---------------------- *)
 let test (b : bool) (m : string) = if not b then failwith m ;;
 
 let test_eq (a1 : 'a) (a2 : 'a) (m : string) = test (a1 = a2) m ;;
@@ -483,6 +484,80 @@ let append_test () =
     test_sfs (sf_append x (get_segs y)) out "sf_append test failed" ;;
 
 
+let limit_test () =
+    let seg1 = seg_of (Float.succ 8.) (Float.pred 9.) 0.023 in
+    let seg2 = seg_of 7.5 8. 0.0012 in
+    let seg3 = seg_of 9. 10. 0.0043 in 
+    let seg4 = seg_of (Float.succ 10.) 12. 0.0053 in
+    let seg5 = seg_of (Float.succ 12.) 14. 0.1 in
+    let only2 = [seg_of 7.5 12. 0.023; seg_of (Float.succ 12.) 14. 0.1] in
+    let all_combined = seg_of 7.5 14. 0.1 in
+    let segs1 = [seg1 ; seg2 ; seg3 ; seg4 ; seg5] in
+    let adj1 = [seg2; seg3] in
+    let adj2 = [seg1] in
+    let adj3 = [seg1; seg4] in
+    let adj4 = [seg3; seg5] in
+    let adj5 = [seg4] in
+
+    test_lst (get_adjacent_segments seg1 segs1) adj1 "get_adjacent_segments doesn't get all segments" ;
+    test_lst (get_adjacent_segments seg2 segs1) adj2 "get_adjacent_segments fails with lower bound segment" ;
+    test_lst (get_adjacent_segments seg5 segs1) adj5 "get_adjacent_segments fails with upper bound segment" ;
+
+    test_eq (determine_adjacency seg1 adj1) Peak "determine_adjacency doesn't recognize a Peak" ;
+    test_eq (determine_adjacency seg3 adj3) (Trough seg4) "determine_adjacency doesn't recognize a Trough" ;
+    test_eq (determine_adjacency seg4 adj4) (Stair seg5) "determine_adjacency doesn't recognize a Stair" ;
+    test_eq (determine_adjacency seg2 adj2) (Stair seg1) "determine_adjacency doesn't recognize a lower bound Stair" ;
+    test_eq (determine_adjacency seg5 adj5) Peak "determine_adjacency doesn't recognize an upper bound Peak" ;
+
+    test_eq (update_adjacency Peak seg1 seg2) Peak "update_adjacency erroneously updated a Peak" ;
+    test_eq (update_adjacency Peak seg2 seg1) (Stair seg1) "update_adjacency did not update a Peak" ;
+    test_eq (update_adjacency (Stair seg5) seg4 seg3) (Stair seg5) "update_adjacency erroneously updated a Stair" ;
+    test_eq (update_adjacency (Stair seg1) seg3 seg4) (Trough seg4) "update_adjacency did not update a Stair" ;
+
+    (* limit_merge testing *)
+    let merged2 = merge_seg seg2 seg1 in
+    let merged3 = merge_seg seg3 seg4 in
+
+    test_eq (limit_merge seg1 segs1 []) None "limit_merge merged a peak" ;
+
+    let t1 = limit_merge seg2 segs1 [] in
+    (match t1 with
+    | None -> failwith "limit merge failed to merge a Stair bound" 
+    | Some (m, new_segs, _) -> 
+        test_eq m merged2 "limit_merge failed to return the merged segment from a Stair bound" ;
+        test_lst new_segs [merged2 ; seg3 ; seg4 ; seg5] 
+            "limit_merge failed to update the new segments on a Stair bound properly") ;
+
+    let t2 = limit_merge seg3 segs1 [] in
+    (match t2 with
+    | None -> failwith "limit merge failed to merge a Trough bound"
+    | Some (m, new_segs, _) -> 
+        test_eq m merged3 "limit_merge failed to return the merged segment from a Trough bound" ;
+        test_lst new_segs [seg1 ; seg2 ; merged3 ; seg5] 
+            "limit_merge failed to update the new segments on a Trough bound properly") ;
+
+    (* Finally, limit testing *)
+    test_lst 
+        (get_segs (limit (StepF segs1) 10)) segs1 
+        "limit failed on stepFunction that did not reach limit" ;
+
+    test_lst 
+        (get_segs (limit (StepF segs1) 4)) [merged2 ; seg3 ; seg4 ; seg5]
+        "limit did not merge a segment" ;
+
+    test_lst
+        (get_segs (limit (StepF segs1) 2)) only2
+        "limit did not merge down to 2 segments" ;
+
+    test_lst
+        (get_segs (limit (StepF segs1) 1)) [all_combined]
+        "limit did not merge all segments"
+;;
+
+(* let rec limit (sf : stepF) (intervals : int) : stepF = *)
+
+
+
 let merge_test () =
     let test = sf_append x (get_segs y) in 
     let happy_test = StepF [ seg_of 0. 1. 0.1 ; seg_of 1. 2. 0.2 ] in
@@ -630,6 +705,7 @@ let sf_testing () =
     range_tests () ;
     get_segs_test () ;
     append_test () ;
+    limit_test () ;
     merge_test () ;
     sf_arith_tests () ;
     sf_lt_test () ;

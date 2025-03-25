@@ -64,26 +64,104 @@ let high_seg (sf : stepF) : segment =
                   segs
     | _ -> failwith "attempting to get upper segment of an error value";;
 
-
-(* Arithmetic operators *)
+(* Merging *)
 (* ------------------------- *)
-
-    match segs with
-    | x :: xs -> 
-        if s1.err = x.err && seg_overlap s1 x
-        then (combine_seg x s1) :: xs 
-        else x :: combine_elem s1 xs
-    | [] -> [s1] 
 let combine_seg (s1 : segment) (s2 : segment) : segment =
     seg_of (min_flt [lower s1.int ; lower s2.int]) 
            (max_flt [upper s1.int ; upper s2.int]) s1.err
+;;
+
+let merge_seg (s1 : segment) (s2 : segment) : segment =
+    seg_of (min_flt [lower s1.int ; lower s2.int]) 
+           (max_flt [upper s1.int ; upper s2.int]) 
+           (max_flt [s1.err ; s2.err])
+;;
+
+
+(* The three cases discussed below.  The constructor holds the segment to be merged *)
+type adjacency = Peak | Trough of segment | Stair of segment
+
+(* Limit the stepfunction to maximum number of intervals.  The smallest
+ * intervals (by range covered) are merged into their adjacent intervals. 
+ *
+ * There are 3 cases to distinguish:
+ * 1. The interval is between a higher and lower error bound.
+ * 2. The interval is between two higher error bounds.
+ * 3. The interval is between two lower error bounds.
+ * 
+ * The algorithm will attempt to not merge any intervals in case 3 as that
+ * could add significant imprecision to the analysis.  For the first case the
+ * segment will get merged with adjacent segment with a higher bound to ensure 
+ * the approximation is still sound.  For the second case the segment will get
+ * merged with the segement with a lower bound.  This maintains soundness as we
+ * are raising the error approximation while being as precise as possible.
+ *
+ *)
+let rec limit (sf : stepF) (intervals : int) : stepF =
+    let num_segs = length (get_segs sf) in
+    if num_segs <= intervals 
+    then sf
+    else 
+        let small_first = sort_by_size (get_segs sf) in
+        StepF (limit_inner small_first (num_segs - intervals) [])
+
+(* The accumulator stores peaks that were skipped *)
+and limit_inner (segs : segment list) (intervals : int) 
+                (acc : segment list) : segment list =
+    if intervals <= 0 
+    then append acc segs
+    else
+        match segs with
+        | []      -> 
+            limit_inner (sort_by_size (append acc segs)) intervals []
+        | x :: xs -> 
+            (match limit_merge x segs acc with
+             | None -> limit_inner xs intervals (x :: acc)
+             | Some (new_seg, new_list, new_acc) ->
+                limit_inner new_list (intervals - 1) new_acc)
+
+and sort_by_size (segs : segment list) : segment list =
+    sort (fun s1 s2 -> Float.compare (intr_size s1.int) (intr_size s2.int)) segs
+
+(* Merges seg into segs.  Returns a new list of segments containing the
+ * combined segment and neither of the merged segments.  Also returns the 
+ * accumulator with removed segments. If seg is a peak it does nothing.
+ *)
+and limit_merge (seg : segment) (segs : segment list) 
+                (peaks : segment list) : (segment * segment list * segment list) option =
+    let adj_segs = get_adjacent_segments seg (append segs peaks) in
+    match determine_adjacency seg (get_adjacent_segments seg (append segs peaks)) with
+    | Peak -> None
+    | Trough s | Stair s -> 
+        let new_seg = merge_seg seg s in
+        Some (new_seg, 
+              sort_by_size (new_seg :: filter (fun s' -> (not (s' = s)) && (not (s' = seg))) segs),
+              (filter (fun s' -> (not (s' = s))) peaks))
+
+and get_adjacent_segments (seg : segment) (segs : segment list) : segment list =
+    filter (fun s -> seg_adjacent s seg) segs 
+
+and determine_adjacency (seg : segment) (segs : segment list) : adjacency =
+    fold_left (fun acc s -> update_adjacency acc seg s) Peak segs
+
+and update_adjacency (adj : adjacency) (seg : segment) (adj_seg : segment) : adjacency = 
+    if adj_seg.err <= seg.err 
+    then adj
+    else 
+        match adj with
+        | Peak     -> Stair adj_seg
+        | Stair s  -> Trough (if s.err > adj_seg.err then adj_seg else s)
+        | Trough _ -> raise (IntervalError "limit failed at determining adjacent segments.")
+
 ;;
 
 
 let cnt = ref 0;;
 let tot = ref 0;;
 
-(* Merge with adjacency comparing *)
+
+(* Merge with adjacency comparing.  Combines adjacent intervals with the same
+   error.*)
 let rec merge (sf : stepF) : stepF =
     let err_first = 
         sort (fun s1 s2 -> Float.compare s2.err s1.err) (get_segs sf) in
@@ -91,13 +169,22 @@ let rec merge (sf : stepF) : stepF =
     cnt := 0 ;
     StepF (merge_inner [] [] err_first false)
 
+(* 
+ * Parameters:
+ *   dom : The domain of the accumulator
+ *   acc : Accumulator for the new step function
+ *   lst : The unmerged segments of the old step function
+ *   has_nan : Is there a NaN segment in the step function?
+ *)
 and merge_inner (dom : float intr list) (acc : segment list) 
                 (lst : segment list) (has_nan : bool) : segment list = 
     cnt := !cnt + 1;
     match lst with
     | x :: xs -> 
-        if has_nan && not (is_valid x.int)
-        then merge_inner dom acc xs true 
+        (* If there is a NaN segment then we stop merging *)
+        if has_nan && not (is_valid x.int) 
+        then acc
+        (* If the two segments are adjacent and have the same error we combine them *)
         else (if length acc > 0 &&
                 x.err = (hd acc).err && 
                 (intr_adjacent x.int (hd acc).int || intr_overlap x.int (hd acc).int)
@@ -106,8 +193,9 @@ and merge_inner (dom : float intr list) (acc : segment list)
                          (combine_seg x (hd acc) :: tl acc)
                          xs
                          (has_nan || (not (is_valid x.int)))
+        (* Otherwise we add to the accumulator *)
         else 
-            merge_inner (expand_domain dom x.int) 
+             merge_inner (expand_domain dom x.int) 
                          ((seg_withouts_intr x dom) @ acc) 
                          xs
                          (has_nan || (not (is_valid x.int))))
@@ -120,6 +208,9 @@ and expand_domain (dom : float intr list) (i : float intr) : float intr list =
         else x :: expand_domain xs i
     | [] -> [i] ;;
 
+
+(* Arithmetic operators *)
+(* ------------------------- *)
 
 (* generic step-function operation *)
 let rec eop (l : stepF) (r : stepF) 
@@ -150,15 +241,15 @@ let eadd (l : stepF) (r : stepF) : stepF =
     eop l r seg_add err_add_prop ;;
 
 let esub (l : stepF) (r : stepF) : stepF = 
-    Format.printf "esub %d + %d\n" (length (get_segs l)) (length (get_segs r)) ;
+    (* Format.printf "esub %d + %d\n" (length (get_segs l)) (length (get_segs r)) ; *)
     eop l r seg_sub err_sub_prop ;;
 
 let emul (l : stepF) (r : stepF) : stepF = 
-    Format.printf "emul %d + %d\n" (length (get_segs l)) (length (get_segs r)) ;
+    (* Format.printf "emul %d + %d\n" (length (get_segs l)) (length (get_segs r)) ; *)
     eop l r seg_mul err_mul_prop ;;
 
 let ediv (l : stepF) (r : stepF) :stepF = 
-    Format.printf "ediv %d + %d\n" (length (get_segs l)) (length (get_segs r)) ;
+    (* Format.printf "ediv %d + %d\n" (length (get_segs l)) (length (get_segs r)) ; *)
     eop l r seg_div err_div_prop ;;
 
 

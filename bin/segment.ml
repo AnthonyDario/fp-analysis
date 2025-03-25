@@ -11,6 +11,8 @@ type segment = {
 
 let seg_bot = { int = IntrBot ; err = 0. } ;;
 
+(* Utilities *)
+(* ------------------------------ *)
 let seg_of l u err = 
     if l > u || err < 0.
     then seg_bot 
@@ -34,6 +36,9 @@ let lower_bnd (s : segment) : float = lower s.int ;;
 let upper_bnd (s : segment) : float = upper s.int ;;
 
 let seg_to_intr (s : segment) : float intr = s.int ;;
+
+let seg_adjacent (seg1 : segment) (seg2 : segment) : bool =
+    intr_adjacent seg1.int seg2.int
 
 (* Same as intr without but maintain the error *)
 (* Remove seg2 from seg1 *)
