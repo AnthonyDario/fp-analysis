@@ -47,4 +47,14 @@ variable (in an ensures clause) as well as error bounds that cover the
 interval in behavior clauses.  The ACSL comment is above the C declaration of
 the function.
 
-Run the tests with `make test`.
+
+## Make Targets
+The make file has a few targets.  The default behavior is to `clean`, `test`,
+and `run`.
+- `build` : Builds the project.
+- `clean` : removes build files.
+- `test` : Runs the test suite.
+- `run` : Runs the analyzer on a selection of tests from the `c/` directory
+  with csv output. 
+- `test-acsl` : Runs the analyzer on a selection of tests from the `c/`
+  directory with acsl output.
