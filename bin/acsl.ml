@@ -21,10 +21,10 @@ let acsl_iIntr (n : string) (intr : int intr) : string =
 
 
 let acsl_seg_behavior (name : string) (i : float interval) (err : float) (num : int) : string = 
-    let name = if name = "return" then "\\return" else name in
+    let nname = if name = "result" then "\\result" else name in
     Format.sprintf 
-        "behavior %s_seg%i:\n\tassumes %20.30e <= %s <= %20.30e;\n\tensures \\round_error(%s) <= %20.30e;\n"
-        name num i.l name i.u name err
+        "behavior %s_seg%i:\n\tassumes \\true;\n\tensures (%20.30e <= %s <= %20.30e) ==> (\\round_error(%s) <= %20.30e);\n"
+        name num i.l nname i.u nname err
 ;;
     
 
@@ -41,8 +41,9 @@ let acsl_segs (name : string) (segs : segment list) : string =
 
 
 let acsl_seg_bounds (name : string) (intr : float intr) : string =
+    let name = if name = "result" then "\\result" else name in
     match intr with
-    | Intr i  -> Format.sprintf "ensures %s >= %20.30e && %s <= %20.30e;\n" name i.l name i.u
+    | Intr i  -> Format.sprintf "ensures %20.30e <= %s <= %20.30e;\n" i.l name i.u
     | IntrBot -> name ^ " = bottom;\n"
 
 
@@ -136,6 +137,6 @@ let acsl_precondition (initial_mem : amem) : string =
 let acsl_amem (amem : amem) (initial_mem : amem) : string =
     (fold_left (fun acc x -> acc ^ (acsl_avar x amem) ^ "\n")
                ("/*@\n" ^ acsl_precondition initial_mem)
-               (SS.elements amem.dom)) 
+               (SS.elements (SS.add "result" initial_mem.dom)))
     ^ "*/\n" 
 ;;
