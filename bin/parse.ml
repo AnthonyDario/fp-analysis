@@ -382,7 +382,10 @@ let rec get_typ_string (t : typ) : string =
 
 
 let get_decl_params (formals : varinfo list) =
-    let params = (fold_left (fun acc f -> acc ^ Format.sprintf ", %s : %s" f.vname (get_typ_string f.vtype)) "" formals)
+    let params = 
+        (fold_left (fun acc f -> acc ^ Format.sprintf ", %s %s" (get_typ_string f.vtype) f.vname) 
+                    "" 
+                    formals)
     in 
         if String.length params > 2 then String.sub params 2 ((String.length params) - 2)
         else params

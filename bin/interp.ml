@@ -375,6 +375,10 @@ and abst_iter_down (f : amem -> amem) (m : amem) : amem =
 let comp f g x = f (g x) ;;
 
 let rec asem_stmt (exp : astmt) (iters : int) (m : amem) : amem =
+(* 
+ * An explicit return variable is placed in memory for outputting to ACSL.  If
+ * the return value is a variable then the old variable identifier is removed from memory 
+ *)
     match exp with
     | AAsgn ((id, idx), e) -> 
         let ident = if Option.is_some idx 
@@ -392,6 +396,12 @@ let rec asem_stmt (exp : astmt) (iters : int) (m : amem) : amem =
         asem_bexp (not_abexp c) (abst_iter body (asem_stmt f iters m) iters)
     | ACol (s1, s2) -> asem_stmt s2 iters (asem_stmt s1 iters m) 
     | ARet _ -> m
+    | ARet ex -> 
+        (let (ret, n) = asem_aexp intervals ex m in
+         match n with
+         | Id n -> amem_rename intervals (Id n) "return" m
+         | _    -> amem_update intervals (Id "return") ret m)
+
 
 (* Branch Instability *)
 (* ---------------------------- *)

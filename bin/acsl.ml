@@ -21,6 +21,7 @@ let acsl_iIntr (n : string) (intr : int intr) : string =
 
 
 let acsl_seg_behavior (name : string) (i : float interval) (err : float) (num : int) : string = 
+    let name = if name = "return" then "\\return" else name in
     Format.sprintf 
         "behavior %s_seg%i:\n\tassumes %20.30e <= %s <= %20.30e;\n\tensures \\round_error(%s) <= %20.30e;\n"
         name num i.l name i.u name err

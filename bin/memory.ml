@@ -52,8 +52,26 @@ let rec amem_update (n : id) (v : aval) (m : amem) : amem =
 and update_len (l : int) (itr : int intr) : int =
     if l > upper itr + 1 then l else upper itr + 1;;
 
-(* amem_contains : amem -> string -> bool *)
-let amem_contains m n = 
+(* 
+ * Rename variable n1 with the name n2.  Used to deduplicate the return
+ * variable in memory.  If n1 does not exist in memory, is an array index, or
+ * is a constant then nothing is done. 
+ *)
+let amem_rename (intervals : int) (n1 : id) (n2 : string) (m : amem) : amem =
+    let { dom = mdom ; tbl = tbl } = m in 
+    let new_tbl = Hashtbl.copy tbl in
+    match n1 with
+    | Id id              ->
+        match lookup m id with
+        | Some av -> (
+            Hashtbl.remove new_tbl id ;
+            Hashtbl.add new_tbl n2 av ;
+            { dom = (SS.add n2 (SS.remove id mdom)) ;
+              tbl = new_tbl })
+        | None -> m
+    | _ -> m ;;
+
+let amem_contains (m : amem) (n : string) : bool = 
     match lookup m n with
     | None -> false
     | _   -> true ;;
