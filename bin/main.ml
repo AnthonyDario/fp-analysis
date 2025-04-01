@@ -28,25 +28,24 @@ let speclist =
 
 let () = Arg.parse speclist anon_fun usage_msg ;;
 
+let initialize_spec =
+    if !spec_file = ""
+    then amem_bot
+    else Spec.parse_spec_file !spec_file !intervals
 
 (* Running the analyzer *)
-let analyze filename = 
-    Format.printf "\nanalyzing %s in %s\n" !fun_name !input_file ;
-    let amem = if !spec_file = "" 
-               then amem_bot 
-               else Spec.parse_spec_file !spec_file in
+let analyze filename initial_mem = 
     Format.printf "parsed specfile\n" ;
     let cstmt = transform (parse_file filename) !fun_name in
     Format.printf "parsed\n" ;
     let astmt = abst_stmt cstmt in
     Format.printf "abstracted\n";
-    abst_interp astmt amem ;;
+    abst_interp astmt initial_mem !intervals ;;
 
-let write_file name mem =
+let write_file name mem initial_mem =
     let oc = open_out name in
-    (* Printf.fprintf oc "%s" (Printing.csv_amem mem) *)
     if !acsl
-    then (Printf.fprintf oc "%s" (Acsl.acsl_amem mem) ;
+    then (Printf.fprintf oc "%s" (Acsl.acsl_amem mem initial_mem) ;
           Printf.fprintf oc "%s" (get_fun_decl (parse_file !input_file) !fun_name))
     else
         if !csv 
@@ -56,6 +55,7 @@ let () =
     if !testing 
     then Test.runtests () 
     else
-        let mem = (analyze !input_file) in
+        let initial_mem = initialize_spec in
+        let mem = (analyze !input_file initial_mem) in
         (* Format.printf "%s\n\n" (str_amem mem) ; *)
-        write_file !out_file mem ;;
+        write_file !out_file mem initial_mem ;;

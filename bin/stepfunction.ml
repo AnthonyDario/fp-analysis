@@ -38,6 +38,14 @@ let sf_append (sf : stepF) (segs : segment list) =
          | [] -> Bot
          | _  -> StepF segs) ;;
 
+(* Get the range and the upperbound of the error as a segment datatype *)
+let rec single_seg (sf : stepF) : segment =
+    let intr = range sf in
+    seg_of_intr intr (err_upper_bound sf)
+
+and err_upper_bound (sf : stepF) : float =
+    fold_left (fun acc s -> if s.err > acc then s.err else acc) 0.0 (get_segs sf) ;;
+
 
 (* Convert to and from an integer interval for casting purposes *)
 let sf_to_iintr (sf : stepF) : int intr = intr_to_iintr (range sf) ;;
