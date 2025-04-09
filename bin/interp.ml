@@ -83,7 +83,8 @@ let aval_op (l : aval) (r : aval)
 
 (* Arithmetic Expressions *)
 (* --------------------------------------------------- *)
-let rec asem_aexp (exp : aaexp) (mem : amem) : (aval * id) =
+let rec asem_aexp (intervals : int) (exp : aaexp) (mem : amem) : (aval * id) =
+    let asem_aexp_ints = asem_aexp intervals in
     match exp with
     | AVal e      -> 
         (e, Const)
@@ -92,46 +93,46 @@ let rec asem_aexp (exp : aaexp) (mem : amem) : (aval * id) =
         | Some v -> (v, Id n)
         | None -> raise (UnassignedVariableException n))
     | AAcc (n, i, _) -> (
-        let index = Option.map (fun x -> fst @@ asem_aexp x mem) i in
+        let index = Option.map (fun x -> fst @@ asem_aexp_ints x mem) i in
         match lookup mem n with
         | Some (AArr (a,_)) -> 
-            (index_array a index, ArrElem (n, extract_index i mem))
+            (index_array a index intervals, ArrElem (n, extract_index i mem intervals))
         | Some v -> raise (InvalidAccessException 
                            ("Attempting to access non-array (" ^ n ^ 
                             ") with non-integer: " ^
                             Printing.str_aval v))
         | None -> raise (UnassignedVariableException n))
     | AAdd (l, r) -> 
-        (aval_op (fst (asem_aexp l mem)) 
-                  (fst (asem_aexp r mem)) 
-                  iintr_add eadd, Const)
+        (aval_op (fst (asem_aexp_ints l mem)) 
+                 (fst (asem_aexp_ints r mem)) 
+                 iintr_add (eadd intervals), Const)
     | ASub (l, r) -> 
-        (aval_op (fst (asem_aexp l mem)) 
-                  (fst (asem_aexp r mem)) 
-                  iintr_sub esub, Const)
+        (aval_op (fst (asem_aexp_ints l mem)) 
+                 (fst (asem_aexp_ints r mem)) 
+                 iintr_sub (esub intervals), Const)
     | AMul (l, r) ->
-        (aval_op (fst (asem_aexp l mem)) 
-                  (fst (asem_aexp r mem)) 
-                  iintr_mul emul, Const)
+        (aval_op (fst (asem_aexp_ints l mem)) 
+                 (fst (asem_aexp_ints r mem))
+                 iintr_mul (emul intervals), Const)
     | ADiv (l, r) -> 
-        (aval_op (fst (asem_aexp l mem)) 
-                  (fst (asem_aexp r mem)) 
-                  iintr_div ediv, Const)
+        (aval_op (fst (asem_aexp_ints l mem)) 
+                 (fst (asem_aexp_ints r mem)) 
+                 iintr_div (ediv intervals), Const)
 
-and index_array (a : arr) (inter : aval option) : aval =
+and index_array (a : arr) (inter : aval option) (intervals : int) : aval =
     match inter with
     | Some (AInt i) -> (
         (* Get the union of all possible values for the index *)
         match iintr_range i with
-        | i :: is -> fold_left (fun acc j -> aval_union acc (Hashtbl.find a j)) 
+        | i :: is -> fold_left (fun acc j -> aval_union intervals acc (Hashtbl.find a j)) 
                                (Hashtbl.find a i) is
         | [] -> ABot)
     | _ -> raise (InvalidAccessException 
                   "Attempting to index an array with something other than an int") 
 
 (* Get the index represented by an aval *)
-and extract_index (a : aaexp option) (mem : amem) : int intr =
-    let index = Option.map (fun x -> fst @@ asem_aexp x mem) a in
+and extract_index (a : aaexp option) (mem : amem) (intervals : int) : int intr =
+    let index = Option.map (fun x -> fst @@ asem_aexp intervals x mem) a in
     match index with
     | Some av -> (
         match av with
@@ -191,34 +192,37 @@ let abst_neq = abst_bool_op iintr_neq sf_neq ;;
 
 (* Abstract Semantics of boolean expressions *)
 (* --------------------------------------------------- *)
-let asem_bexp (exp : abexp) (m : amem) : amem =
+let asem_bexp (intervals : int) (exp : abexp) (m : amem) : amem =
+    let asem_aexp_int = asem_aexp intervals in
+    let amem_update_int = amem_update intervals in
     match exp with
     | ALt (l, r) -> 
-        let ((new_l, lid), (new_r, rid)) = abst_lt (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r m)
+        let ((new_l, lid), (new_r, rid)) = abst_lt (asem_aexp_int l m) (asem_aexp_int r m) in
+        amem_update_int lid new_l (amem_update_int rid new_r m)
     | ALe (l, r) -> 
-        let ((new_l, lid), (new_r, rid)) = abst_le (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r m)
+        let ((new_l, lid), (new_r, rid)) = abst_le (asem_aexp_int l m) (asem_aexp_int r m) in
+        amem_update_int lid new_l (amem_update_int rid new_r m)
     | AEq (l, r) -> 
-        let ((new_l, lid), (new_r, rid)) = abst_eq (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r m)
+        let ((new_l, lid), (new_r, rid)) = abst_eq (asem_aexp_int l m) (asem_aexp_int r m) in
+        amem_update_int lid new_l (amem_update_int rid new_r m)
     | ANe _ -> m
     | AGe (l, r) ->
-        let ((new_l, lid), (new_r, rid)) = abst_ge (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r m)
+        let ((new_l, lid), (new_r, rid)) = abst_ge (asem_aexp_int l m) (asem_aexp_int r m) in
+        amem_update_int lid new_l (amem_update_int rid new_r m)
     | AGt (l, r) -> 
-        let ((new_l, lid), (new_r, rid)) = abst_gt (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r m)
+        let ((new_l, lid), (new_r, rid)) = abst_gt (asem_aexp_int l m) (asem_aexp_int r m) in
+        amem_update_int lid new_l (amem_update_int rid new_r m)
 
 (* u_mem : amem -> amem -> amem *)
-let u_amem mem1 mem2 = 
+let u_amem mem1 mem2 (intervals : int) = 
     let { dom = dom1 ; tbl = m1 } = mem1 in
     let { dom = dom2 ; tbl = m2 } = mem2 in
     let dom3 = SS.union dom1 dom2 in
     let new_tbl= Hashtbl.copy m1 in
     iter (fun x -> Hashtbl.replace new_tbl 
                                    x 
-                                   (aval_union (fail_lookup x m1)
+                                   (aval_union intervals
+                                               (fail_lookup x m1)
                                                (fail_lookup x m2)))
          (SS.elements dom3) ;
     { dom = dom3 ;
@@ -231,11 +235,12 @@ let u_amem mem1 mem2 =
 
 (* Step Functions 
  * widen the ends and widen each segment *)
-let rec widen_sf (sf1 : stepF) (sf2 : stepF) : stepF = 
+let rec widen_sf (intervals : int) (sf1 : stepF) (sf2 : stepF) : stepF = 
+    let sf_union_int = sf_union intervals in
     match sf1, sf2 with
     | StepF _, StepF _ ->
-        (sf_union
-            (sf_union
+        (sf_union_int
+            (sf_union_int
                 (if (lower (range sf2) <= lower (range sf1)) 
                  then StepF [seg_of neg_infinity (lower (range sf1)) infinity]
                  else Bot)
@@ -255,11 +260,12 @@ and widen_seg (s1 : segment) (s2 : segment) : segment =
     then seg_of_intr s1.int infinity
     else s1 ;;
 
-let rec narrow_sf (sf1 : stepF) (sf2 : stepF) : stepF =
+let rec narrow_sf (intervals : int) (sf1 : stepF) (sf2 : stepF) : stepF =
+    let sf_union_int = sf_union intervals in
     match sf1, sf2 with
     | StepF _, StepF _ ->
-        (sf_union
-            (sf_union
+        (sf_union_int
+            (sf_union_int
                 (if (lower (range sf1) = neg_infinity)
                  then StepF [low_seg sf2] 
                  else Bot)
@@ -312,11 +318,11 @@ let rec itr_op_aval (sf_op : stepF -> stepF -> stepF)
     | _, ABot -> av1;;
 
 
-let widen_aval (a1 : aval) (a2 : aval) : aval =
-    itr_op_aval widen_sf widen_iintr a1 a2 ;;
+let widen_aval (intervals : int) (a1 : aval) (a2 : aval) : aval =
+    itr_op_aval (widen_sf intervals) widen_iintr a1 a2 ;;
 
-let narrow_aval (a1 : aval) (a2 : aval) : aval =
-    itr_op_aval narrow_sf narrow_iintr a1 a2 ;;
+let narrow_aval (intervals : int) (a1 : aval) (a2 : aval) : aval =
+    itr_op_aval (narrow_sf intervals) narrow_iintr a1 a2 ;;
 
 let aval_opt_op (a1 : aval option) (a2 : aval option) 
                 (op : aval -> aval -> aval) : aval  =
@@ -324,83 +330,88 @@ let aval_opt_op (a1 : aval option) (a2 : aval option)
     | Some av1, Some av2 -> op av1 av2
     | _, _ -> failwith "Variable disappeared between iterations";;
 
-let widen_aval_opt (a1 : aval option) (a2 : aval option) : aval =
-    aval_opt_op a1 a2 widen_aval ;;
+let widen_aval_opt (intervals : int) (a1 : aval option) (a2 : aval option) : aval =
+    aval_opt_op a1 a2 (widen_aval intervals) ;;
 
-let narrow_aval_opt (a1 : aval option) (a2 : aval option) : aval =
-    aval_opt_op a1 a2 narrow_aval ;;
+let narrow_aval_opt (intervals : int) (a1 : aval option) (a2 : aval option) : aval =
+    aval_opt_op a1 a2 (narrow_aval intervals) ;;
 
 let amem_op (mem1 : amem) (mem2 : amem) 
-            (op : aval option -> aval option -> aval) : amem =
-    fold_left (fun acc x -> amem_update (Id x)
+            (op : aval option -> aval option -> aval) 
+            (intervals : int) : amem =
+    fold_left (fun acc x -> amem_update intervals (Id x)
                                         (op (lookup acc x) 
                                             (lookup mem2 x)) 
                                         acc)
               mem1 (SS.elements mem2.dom) ;;
 
-let widen_amem (mem1 : amem) (mem2 : amem) : amem =
-    amem_op mem1 mem2 widen_aval_opt ;;
+let widen_amem (intervals : int) (mem1 : amem) (mem2 : amem) : amem =
+    amem_op mem1 mem2 (widen_aval_opt intervals) intervals ;;
 
-let narrow_amem (mem1 : amem) (mem2 : amem) : amem =
-    amem_op mem1 mem2 narrow_aval_opt ;;
+let narrow_amem (intervals : int) (mem1 : amem) (mem2 : amem) : amem =
+    amem_op mem1 mem2 (narrow_aval_opt intervals) intervals ;;
 
 (* Bounded iteration with widening after n iterations *)
-let rec abst_iter (f : amem -> amem) (m : amem) (n : int) : amem =
-    (abst_iter_up f m n)
+let rec abst_iter (intervals : int) (f : amem -> amem) (m : amem) (n : int) : amem =
+    (*(abst_iter_down f (abst_iter_up f m n))*)
+    (abst_iter_up intervals f m n)
 
 (* upward iteration *)
-and abst_iter_up (f : amem -> amem) (m : amem) (n : int) : amem =
+and abst_iter_up (intervals : int) (f : amem -> amem) (m : amem) (n : int) : amem =
+    (* if n = 0 then abst_iter_up_w f m else  *)
     if n = 0 then m else
     let next = f m in
-    let unioned =  u_amem m next in
+    let unioned = u_amem m next intervals in
     if amem_eq unioned m 
     then unioned
-    else abst_iter_up f unioned (n - 1)
+    else abst_iter_up intervals f unioned (n - 1)
 
 (* with widening *)
-and abst_iter_up_w (f : amem -> amem) (m : amem) : amem =
+and abst_iter_up_w (intervals : int) (f : amem -> amem) (m : amem) : amem =
     let next = f m in
-    let widened = widen_amem m next in
+    let widened = widen_amem intervals m next in
     if amem_eq widened m 
     then widened
-    else abst_iter_up_w f widened
+    else abst_iter_up_w intervals f widened
 
-and abst_iter_down (f : amem -> amem) (m : amem) : amem =
+and abst_iter_down (intervals : int) (f : amem -> amem) (m : amem) : amem =
     let next = f m in
-    let narrowed = narrow_amem m next in
+    let narrowed = narrow_amem intervals m next in
     if amem_eq narrowed m
     then narrowed
-    else abst_iter_down f narrowed;;
+    else abst_iter_down intervals f narrowed;;
 
 let comp f g x = f (g x) ;;
 
-let rec asem_stmt (exp : astmt) (iters : int) (m : amem) : amem =
 (* 
  * An explicit return variable is placed in memory for outputting to ACSL.  If
  * the return value is a variable then the old variable identifier is removed from memory 
  *)
+let rec asem_stmt (intervals : int) (exp : astmt) (iters : int) (m : amem) : amem =
+    let asem_stmt_int = asem_stmt intervals in
+    let asem_bexp_int = asem_bexp intervals in
     match exp with
     | AAsgn ((id, idx), e) -> 
         let ident = if Option.is_some idx 
-                    then ArrElem (id, extract_index idx m)
+                    then ArrElem (id, extract_index idx m intervals)
                     else Id id in
-        amem_update ident (fst (asem_aexp e m)) m 
+        amem_update intervals ident (fst (asem_aexp intervals e m)) m 
     | AIf (c, t, e) -> 
         u_amem
-            (u_amem (asem_stmt t iters (asem_bexp c m)) 
-                    (asem_stmt e iters (asem_bexp (not_abexp c) m)))
-            (unstable_branch c t e iters m)
+            (u_amem (asem_stmt_int t iters (asem_bexp_int c m)) 
+                    (asem_stmt_int e iters (asem_bexp_int (not_abexp c) m)) intervals)
+            (unstable_branch c t e iters m intervals)
+            intervals
     | AFor (f, c, a, b) -> 
-        let body = comp (asem_stmt a iters) 
-                        (comp (asem_stmt b iters) (asem_bexp c)) in
-        asem_bexp (not_abexp c) (abst_iter body (asem_stmt f iters m) iters)
-    | ACol (s1, s2) -> asem_stmt s2 iters (asem_stmt s1 iters m) 
-    | ARet _ -> m
+        let body = comp (asem_stmt_int a iters) 
+                        (comp (asem_stmt_int b iters) (asem_bexp_int c)) in
+        asem_bexp_int (not_abexp c) (abst_iter intervals body (asem_stmt_int f iters m) iters)
+    | ACol (s1, s2) -> asem_stmt_int s2 iters (asem_stmt_int s1 iters m) 
     | ARet ex -> 
         (let (ret, n) = asem_aexp intervals ex m in
          match n with
-         | Id n -> amem_rename intervals (Id n) "return" m
-         | _    -> amem_update intervals (Id "return") ret m)
+         | Id n -> amem_rename intervals (Id n) "result" m
+         | _    -> amem_update intervals (Id "result") ret m)
 
 
 (* Branch Instability *)
@@ -408,20 +419,30 @@ let rec asem_stmt (exp : astmt) (iters : int) (m : amem) : amem =
 
 (* Find the unstable region of a condition *)
 (* A little bit of a hack since abst_eq computes the overlap *)
-and filter_unstable (exp : abexp) (m : amem) : amem =
+and filter_unstable (intervals : int) (exp : abexp) (m : amem) : amem =
+    let asem_aexp_int = asem_aexp intervals in
+    let amem_update_int = amem_update intervals in
     match exp with
     | ALt (l, r) | ALe (l, r) | AEq (l, r) | ANe (l, r) | AGe (l, r) | AGt (l, r) ->
-        let ((new_l, lid), (new_r, rid)) = abst_eq (asem_aexp l m) (asem_aexp r m) in
-        amem_update lid new_l (amem_update rid new_r m)
+        let ((new_l, lid), (new_r, rid)) = abst_eq (asem_aexp_int l m) (asem_aexp_int r m) in
+        amem_update_int lid new_l (amem_update_int rid new_r m)
 
 (* find the error between the branches 
    map each variable to a new interval based on the then branch and other things*)
 and unstable_branch (exp : abexp) (t : astmt) (e : astmt) 
-                    (i : int) (m : amem) : amem =
-    let fu = filter_unstable exp m in
-    let m1, m2 = asem_stmt t i fu, asem_stmt e i fu in
-    u_amem (fold_left (fun a x -> amem_update (Id x) (unstable_aval x m1 m2) a) amem_bot (SS.elements m1.dom)) (* then branch *)
-           (fold_left (fun a x -> amem_update (Id x) (unstable_aval x m2 m1) a) amem_bot (SS.elements m2.dom)) (* else branch *)
+                    (i : int) (m : amem) (intervals : int) : amem =
+    let asem_stmt_int = asem_stmt intervals in
+    let amem_update_int = amem_update intervals in
+    let fu = filter_unstable intervals exp m in
+    let m1, m2 = asem_stmt_int t i fu, asem_stmt_int e i fu in
+    u_amem 
+        (* then branch *)
+        (fold_left (fun a x -> amem_update_int (Id x) (unstable_aval x m1 m2) a) 
+                   amem_bot (SS.elements m1.dom)) 
+        (* else branch *)
+        (fold_left (fun a x -> amem_update_int (Id x) (unstable_aval x m2 m1) a) 
+                   amem_bot (SS.elements m2.dom))
+        intervals
 
 (* What is the difference between branch m1 and branch m2? Assuming we took
  * branch m1. *)
@@ -454,4 +475,4 @@ and one_branch (a : aval) : aval =
         AFloat (StepF (map (fun s -> seg_of_intr s.int infinity) sf))
     | _         -> a ;;
 
-let abst_interp exp m = asem_stmt exp 20 m ;;
+let abst_interp exp m intervals = asem_stmt intervals exp 20 m ;;

@@ -3,10 +3,7 @@ open List
 (* product_map f [a1; ...; an] [b1; ...; bm] = 
    [f a1 b1; f a1 b2; ... f a2 b1 ; f a2 b2 ; ... ; f an bm] *)
 let product_map (f : 'a -> 'b -> 'c) (xs : 'a list) (ys : 'b list) : 'c list = 
-    (* let tot = (length xs) in *)
-    let i = ref 0 in 
     let ret = concat_map (fun x -> 
-        i := !i + 1;
         map (fun y -> f x y) ys) xs in
     ret ;;
 

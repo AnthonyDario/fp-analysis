@@ -35,6 +35,11 @@ The above declares the bounds for two variables, each with two different
 segments.  `x`'s value is between 2 and 8, with two different errors
 associated with different regions of the interval. 
 
+The performance of the analyzer depends on how granular the analysis is.  You
+can limit the number of segments per variable with the `-ensures-intervals
+<NUM>` flag.  The default it 10,000 intervals.
+
+
 ## Output
 The tool can either output a csv file or
 [ACSL](https://frama-c.com/html/acsl.html). 
@@ -58,3 +63,6 @@ and `run`.
   with csv output. 
 - `test-acsl` : Runs the analyzer on a selection of tests from the `c/`
   directory with acsl output.
+- `test-intervals` : Runs the analyzer on a selection of tests from the `c/`
+  directory with a limit on the amount of intervals.
+

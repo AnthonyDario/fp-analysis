@@ -72,6 +72,7 @@ let high_seg (sf : stepF) : segment =
                   segs
     | _ -> failwith "attempting to get upper segment of an error value";;
 
+
 (* Merging *)
 (* ------------------------- *)
 let combine_seg (s1 : segment) (s2 : segment) : segment =
@@ -113,7 +114,11 @@ let rec limit (sf : stepF) (intervals : int) : stepF =
         let small_first = sort_by_size (get_segs sf) in
         StepF (limit_inner small_first (num_segs - intervals) [])
 
-(* The accumulator stores peaks that were skipped *)
+(* 
+ * segs : The segments of the step function
+ * intervals : The number of intervals to merge
+ * acc : An accumulator stores peaks that were skipped 
+ *)
 and limit_inner (segs : segment list) (intervals : int) 
                 (acc : segment list) : segment list =
     if intervals <= 0 
@@ -124,7 +129,8 @@ and limit_inner (segs : segment list) (intervals : int)
             limit_inner (sort_by_size (append acc segs)) intervals []
         | x :: xs -> 
             (match limit_merge x segs acc with
-             | None -> limit_inner xs intervals (x :: acc)
+             | None -> 
+                limit_inner xs intervals (x :: acc)
              | Some (new_seg, new_list, new_acc) ->
                 limit_inner new_list (intervals - 1) new_acc)
 
@@ -137,7 +143,6 @@ and sort_by_size (segs : segment list) : segment list =
  *)
 and limit_merge (seg : segment) (segs : segment list) 
                 (peaks : segment list) : (segment * segment list * segment list) option =
-    let adj_segs = get_adjacent_segments seg (append segs peaks) in
     match determine_adjacency seg (get_adjacent_segments seg (append segs peaks)) with
     | Peak -> None
     | Trough s | Stair s -> 
@@ -147,7 +152,7 @@ and limit_merge (seg : segment) (segs : segment list)
               (filter (fun s' -> (not (s' = s))) peaks))
 
 and get_adjacent_segments (seg : segment) (segs : segment list) : segment list =
-    filter (fun s -> seg_adjacent s seg) segs 
+    filter (fun s -> seg_adjacent s seg) segs
 
 and determine_adjacency (seg : segment) (segs : segment list) : adjacency =
     fold_left (fun acc s -> update_adjacency acc seg s) Peak segs
@@ -167,10 +172,9 @@ and update_adjacency (adj : adjacency) (seg : segment) (adj_seg : segment) : adj
 let cnt = ref 0;;
 let tot = ref 0;;
 
-
 (* Merge with adjacency comparing.  Combines adjacent intervals with the same
    error.*)
-let rec merge (sf : stepF) : stepF =
+let rec merge (sf : stepF) (intervals : int) : stepF =
     let err_first = 
         sort (fun s1 s2 -> Float.compare s2.err s1.err) (get_segs sf) in
     tot := length err_first ;
@@ -196,17 +200,17 @@ and merge_inner (dom : float intr list) (acc : segment list)
         else (if length acc > 0 &&
                 x.err = (hd acc).err && 
                 (intr_adjacent x.int (hd acc).int || intr_overlap x.int (hd acc).int)
-        then 
-             merge_inner (expand_domain dom x.int)
-                         (combine_seg x (hd acc) :: tl acc)
-                         xs
-                         (has_nan || (not (is_valid x.int)))
+        then
+            merge_inner (expand_domain dom x.int)
+                        (combine_seg x (hd acc) :: tl acc)
+                        xs
+                        (has_nan || (not (is_valid x.int)))
         (* Otherwise we add to the accumulator *)
-        else 
-             merge_inner (expand_domain dom x.int) 
-                         ((seg_withouts_intr x dom) @ acc) 
-                         xs
-                         (has_nan || (not (is_valid x.int))))
+        else
+            merge_inner (expand_domain dom x.int) 
+                        ((seg_withouts_intr x dom) @ acc)
+                        xs
+                        (has_nan || (not (is_valid x.int))))
     | [] -> acc
 and expand_domain (dom : float intr list) (i : float intr) : float intr list =
     match dom with
@@ -224,6 +228,7 @@ and expand_domain (dom : float intr list) (i : float intr) : float intr list =
 let rec eop (l : stepF) (r : stepF) 
             (op : segment -> segment -> segment list) 
             (prop_err_op : segment -> segment -> float)
+            (intervals : int)
             : stepF =
     match l, r with
     | StepF ls, StepF rs ->
@@ -233,10 +238,10 @@ let rec eop (l : stepF) (r : stepF)
                             (map (fun s -> {s with err = perr}) 
                                           (op x y))) 
                          ls rs) in
-        let ms = merge (StepF is) in
+        let ms = merge (StepF is) intervals in
         let ret = concat (map (fun s -> binade_split_seg s) 
                          (get_segs ms)) in 
-        merge (StepF ret)
+        limit (merge (StepF ret) intervals) intervals ;
     | _, _ -> Bot
 
 (* Binade splitting on segments *)
@@ -244,21 +249,17 @@ and binade_split_seg (s : segment) : segment list =
     let is = split_binade s.int in
     map (fun i -> { int = i ; err = s.err +. ulp_intr i }) is ;;
 
-let eadd (l : stepF) (r : stepF) : stepF = 
-    (* Format.printf "eadd %d + %d\n" (length (get_segs l)) (length (get_segs r)) ; *)
-    eop l r seg_add err_add_prop ;;
+let eadd (intervals : int) (l : stepF) (r : stepF) : stepF = 
+    eop l r seg_add err_add_prop intervals ;;
 
-let esub (l : stepF) (r : stepF) : stepF = 
-    (* Format.printf "esub %d + %d\n" (length (get_segs l)) (length (get_segs r)) ; *)
-    eop l r seg_sub err_sub_prop ;;
+let esub (intervals : int) (l : stepF) (r : stepF) : stepF = 
+    eop l r seg_sub err_sub_prop intervals ;;
 
-let emul (l : stepF) (r : stepF) : stepF = 
-    (* Format.printf "emul %d + %d\n" (length (get_segs l)) (length (get_segs r)) ; *)
-    eop l r seg_mul err_mul_prop ;;
+let emul (intervals : int) (l : stepF) (r : stepF) : stepF = 
+    eop l r seg_mul err_mul_prop intervals ;;
 
-let ediv (l : stepF) (r : stepF) :stepF = 
-    (* Format.printf "ediv %d + %d\n" (length (get_segs l)) (length (get_segs r)) ; *)
-    eop l r seg_div err_div_prop ;;
+let ediv (intervals : int) (l : stepF) (r : stepF) : stepF = 
+    eop l r seg_div err_div_prop intervals ;;
 
 
 (* Boolean operators *)
@@ -292,5 +293,5 @@ let sf_eq l r = (chop l (range r) seg_eq, chop r (range l) seg_eq) ;;
 let sf_neq l r = (l, r) ;;
 
 (* Union *)
-let sf_union (l : stepF) (r : stepF) : stepF =
-    merge (sf_append l (get_segs r)) ;;
+let sf_union (intervals : int) (l : stepF) (r : stepF) : stepF =
+    merge (sf_append l (get_segs r)) intervals ;;

@@ -7,6 +7,8 @@ open Stepfunction
 open Memory
 open Util
 
+let flt_fmt f = Format.sprintf "%40.50f" f ;;
+
 (* Concrete Domain *)
 let str_cval (v : cval) : string =
     match v with
@@ -54,8 +56,8 @@ let rec str_cstmt (stmt : cstmt) : string =
 
 (* Abstract Domain *)
 let str_interval (i : float interval) : string = 
-    "[" ^ Format.sprintf "%20.30f" i.l ^ 
-    " ; " ^ Format.sprintf "%20.30f" i.u ^ "]" ;;
+    "[" ^ flt_fmt i.l ^ 
+    " ; " ^ flt_fmt i.u ^ "]" ;;
 
 let str_intr (intr : float intr) : string =
     match intr with
@@ -75,7 +77,7 @@ let str_iIntr (intr : int intr) : string =
     | IntrBot -> "_|_" ;;
 
 let str_seg (seg : segment) : string =
-    "(" ^ str_intr seg.int ^ ", " ^ Format.sprintf "%20.30f" seg.err ^ ")" ;;
+    "(" ^ str_intr seg.int ^ ", " ^ flt_fmt seg.err ^ ")" ;;
 
 let str_segs (segs : segment list) : string =
     fold_left (fun acc s -> acc ^ str_seg s ^ ", ") "{" segs ^ "}" ;;

@@ -73,11 +73,11 @@ let parse_line (l : string) : (string * aval) =
 
 (* Split the file by lines *)
 (* grab each line and turn it into a value *)
-let parse_spec_file (filename : string) : amem = 
+let parse_spec_file (filename : string) (intervals : int) : amem = 
     let ic = open_in filename in
     fold_left (fun acc l -> 
         let (n, aval) = parse_line l in
-        amem_update (Id n) aval acc) 
+        amem_update intervals (Id n) aval acc)
         amem_bot 
         (input_lines ic) 
     ;;

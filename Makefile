@@ -25,6 +25,10 @@ test-acsl: clean
 	dune exec --profile release -- analyzer -f doppler1 c/rosa/rosa.c -sf c/rosa/doppler1.spec -out doppler1.acsl -acsl
 	dune exec --profile release -- analyzer -f foo c/simple-array-test.c -sf c/simple-array-test.spec -out simple-array-test.acsl -acsl
 
+test-intervals: clean
+	dune exec --profile release -- analyzer -f doppler1 c/rosa/rosa.c -sf c/rosa/doppler1.spec -out doppler1.acsl -acsl -ensures-intervals 10
+	dune exec --profile release -- analyzer -f foo c/simple-array-test.c -sf c/simple-array-test.spec -out simple-array-test.acsl -acsl -ensures-intervals 10
+
 
 test: clean
 	dune exec --profile release -- analyzer -test

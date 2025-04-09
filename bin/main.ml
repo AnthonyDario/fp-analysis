@@ -13,6 +13,7 @@ let spec_file = ref "" ;;
 let out_file = ref "" ;;
 let csv = ref false ;;
 let acsl = ref false ;;
+let intervals = ref 10000 ;;
 
 let anon_fun filename = input_file := filename ;;
 
@@ -24,6 +25,7 @@ let speclist =
         ("-csv", Arg.Set csv, "Output to CSV");
         ("-acsl", Arg.Set acsl, "Output to ACSL");
         ("-out", Arg.Set_string out_file, "output filename");
+        ("-ensures-intervals", Arg.Set_int intervals, "Maximum number of intervals per variable");
     ] ;;
 
 let () = Arg.parse speclist anon_fun usage_msg ;;

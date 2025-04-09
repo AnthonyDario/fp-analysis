@@ -335,14 +335,14 @@ let intr_union (intr1 : float intr) (intr2 : float intr) : float intr=
         Intr { l = min_flt [i1l ; i2l]; u = max_flt [i1u ; i2u] }
     | IntrBot, _ | _, IntrBot -> IntrBot ;;
 
-(* Gets the sections of i1 that don't overlap with i2 *)
+(* Gets the sections of intr1 that don't overlap with intr2 *)
 let intr_without (intr1 : float intr) (intr2 : float intr) : float intr list = 
     match intr1, intr2 with
     | Intr i1, Intr i2 ->
         filter (fun x -> x != IntrBot)
                (if i1.l < i2.l
-                then [ intr_of_exc i1.l (min_flt [i2.l ; i1.u]) ; intr_of_exc i2.u i1.u ]
-                else [ intr_of_exc (max_flt [i2.u ; i1.l]) i1.u ])
+                then [ intr_of_exc i1.l (min_flt [pred i2.l; i1.u]) ; intr_of_exc (succ i2.u) i1.u ]
+                else [ intr_of_exc (max_flt [succ i2.u ; i1.l]) i1.u ])
     | IntrBot, _ -> [IntrBot]
     | _, IntrBot -> [intr1] ;;
 

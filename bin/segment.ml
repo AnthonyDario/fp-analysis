@@ -25,13 +25,6 @@ let seg_of_intr i err =
 
 let seg_overlap s1 s2 = intr_overlap s1.int s2.int ;;
 
-let get_segs_range (segs : segment list) : float intr list =
-    match segs with
-    (* | x :: xs -> fold_left (fun acc s -> intr_union acc s.int) x.int xs *)
-    | x :: xs -> fold_left (fun acc s -> 
-                                map (fun i -> if intr_overlap i s.int then intr_union i s.int else i) acc) [x.int] xs
-    | [] -> [IntrBot] ;;
-
 let lower_bnd (s : segment) : float = lower s.int ;;
 let upper_bnd (s : segment) : float = upper s.int ;;
 
@@ -46,11 +39,9 @@ let seg_without (seg1 : segment) (seg2 : segment) : segment list =
     map (fun i -> seg_of_intr i seg1.err)
         (intr_without seg1.int seg2.int) ;;
 
-let seg_withouts (s1 : segment) (s2 : segment list) : segment list =
-    map (fun i -> seg_of_intr i s1.err) (intr_withouts s1.int (get_segs_range s2)) ;;
 
 let seg_withouts_intr (s1 : segment) (is : float intr list) : segment list =
-    map (fun i -> seg_of_intr i s1.err) (intr_withouts s1.int is) ;;
+    map (fun i -> seg_of_intr i s1.err) (intr_withouts s1.int is)
 
 (* The portions of s1 that overlap with s2 
  * Note that the error of segment1 is maintained here *)

@@ -113,25 +113,25 @@ and map2 (f : 'a -> 'b -> 'c) (a : 'a option) (b : 'b option) : 'c option =
     | _, _ -> None ;;
 
 
-let rec aval_union (av1 : aval) (av2 : aval) : aval = 
+let rec aval_union (intervals : int) (av1 : aval) (av2 : aval) : aval = 
     match av1, av2 with
     | AInt ii1, AInt ii2     -> AInt (iintr_union ii1 ii2)
     | AInt ii, AFloat et     -> AInt (iintr_union ii (sf_to_iintr et))
     | AFloat et, AInt ii     -> AInt (iintr_union (sf_to_iintr et) ii)
-    | AFloat et1, AFloat et2 -> AFloat (sf_union et1 et2) 
-    | AArr (a1, l1), AArr (a2, l2) -> apply aval_union a1 l1 a2 l2
+    | AFloat et1, AFloat et2 -> AFloat (sf_union intervals et1 et2) 
+    | AArr (a1, l1), AArr (a2, l2) -> apply (aval_union intervals) a1 l1 a2 l2
     | AArr _, _ | _, AArr _  -> failwith "union of array and number" 
     | ABot, _ -> av2
     | _, ABot -> av1 ;;
 
 
-let arr_update (a1 : arr) (idxs : int intr) (v : aval) : arr =
+let arr_update (intervals : int) (a1 : arr) (idxs : int intr) (v : aval) : arr =
     (* For each element in the index 
        Update the index with the union if it is there 
        If not then just return the thing *)
     let new_tbl = Hashtbl.copy a1 in
     List.iter (fun i -> match Hashtbl.find_opt new_tbl i with
-                        | Some av -> Hashtbl.replace new_tbl i (aval_union v av)
+                        | Some av -> Hashtbl.replace new_tbl i ((aval_union intervals) v av)
                         | None -> Hashtbl.replace new_tbl i v) 
               (iintr_range idxs);
     new_tbl ;;

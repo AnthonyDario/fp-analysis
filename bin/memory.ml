@@ -26,7 +26,7 @@ let fail_lookup (x : string) (m : (string, aval) Hashtbl.t) =
 let amem_bot = { dom = SS.empty ; tbl = Hashtbl.create 5000 }
 let lookup (m : amem) (x : string) : aval option = Hashtbl.find_opt m.tbl x ;;
 
-let rec amem_update (n : id) (v : aval) (m : amem) : amem = 
+let rec amem_update (intervals : int) (n : id) (v : aval) (m : amem) : amem = 
     let { dom = mdom ; tbl = tbl } = m in
     let new_tbl = Hashtbl.copy tbl in
     match n with 
@@ -37,12 +37,12 @@ let rec amem_update (n : id) (v : aval) (m : amem) : amem =
     | ArrElem (id, idxs) -> (
         match lookup m id with
         | Some (AArr (arr, l)) -> (
-            let updated = AArr ((arr_update arr idxs v), update_len l idxs) in
+            let updated = AArr ((arr_update intervals arr idxs v), update_len l idxs) in
             Hashtbl.replace new_tbl id updated ;
             { dom = SS.add id mdom ; 
               tbl = new_tbl })
         | None -> (
-            let updated = AArr ((arr_update (arr_bot ()) idxs v), (upper idxs) + 1) in
+            let updated = AArr ((arr_update intervals (arr_bot ()) idxs v), (upper idxs) + 1) in
             Hashtbl.replace new_tbl id updated ;
             { dom = SS.add id mdom ;
               tbl = new_tbl })

@@ -215,12 +215,11 @@ let intr_union_test () =
 let intr_partition_test () = 
     test_eq (intr_partition i3 i2) ([i3], IntrBot) 
             "intr_partition failed no-change test" ;
-    (* Perhaps we need to offset by ulp here? *)
     test_eq (intr_partition i5 i1) 
-            ([intr_of 1. 2. ; intr_of 4. 5.], i1)
+            ([intr_of 1. (pred 2.) ; intr_of (succ 4.) 5.], i1)
             "intr_partition failed containing test" ;
     test_eq (intr_partition i3 i1) 
-            ([intr_of 1. 2.], intr_of 2. 3.) 
+            ([intr_of 1. (pred 2.)], intr_of 2. 3.) 
             "intr_partition failed overlap test" ;
     test_eq (intr_partition i1 i5) ([], i1)
             "intr_partition failed enveloped test" ;
@@ -233,10 +232,9 @@ let intr_with_test () =
 
 let intr_without_test () =
     test_eq (intr_without i3 i2) [i3] "intr_without failed no-change test" ;
-    (* Perhaps we need to offset by ulp here? *)
-    test_eq (intr_without i5 i1) [intr_of 1. 2. ; intr_of 4. 5.] 
+    test_eq (intr_without i5 i1) [intr_of 1. (pred 2.) ; intr_of (succ 4.) 5.] 
         "intr_without failed containing test" ;
-    test_eq (intr_without i3 i1) [intr_of 1. 2.] 
+    test_eq (intr_without i3 i1) [intr_of 1. (pred 2.)] 
         "intr_without failed overlap test" ;
     test_eq (intr_without i1 i5) [] 
         "intr_without failed enveloped test" ;
@@ -295,7 +293,7 @@ let seg_with_test () =
 
 let seg_partition_test () =
     let (non_overlap, overlap) = seg_partition s2 s1 in
-    test_lst non_overlap [seg_of 4. 8. 0.101] "seg_partition failed overlap test" ;
+    test_lst non_overlap [seg_of (succ 4.) 8. 0.101] "seg_partition failed overlap test" ;
     test_eq overlap seg_bot "seg_partition failed non-overlap test" ;;
 
 
@@ -385,35 +383,17 @@ let seg_neq_test () =
     test_bool (seg_neq s1 s2) (s1, s2) "seg_neq test failed" ;;
 
 
-let get_segs_range_test () =
-    test_eq (get_segs_range [s1 ; s2 ; s3 ; s4 ; s5]) 
-            [(intr_of (-5.) 8.)]
-            "get_segs_range failed test" ;;
-
-
 let seg_without_test () =
     test_lst [ s3 ] (seg_without s3 s2) "seg_without failed no-change test" ;
-    (* Perhaps we need to offset by ulp here? *)
-    test_lst [ seg_of (lower s5.int) (lower s1.int) s5.err ; 
-              seg_of (upper s1.int) (upper s5.int) s5.err ] (seg_without s5 s1) 
+    test_lst [ seg_of (lower s5.int) (pred (lower s1.int)) s5.err ; 
+              seg_of (succ (upper s1.int)) (upper s5.int) s5.err ] (seg_without s5 s1) 
         "seg_without failed containing test" ;
-    test_lst [ seg_of (lower s3.int) (lower s1.int) s3.err ] (seg_without s3 s1) 
+    test_lst [ seg_of (lower s3.int) (pred (lower s1.int)) s3.err ] (seg_without s3 s1) 
         "seg_without failed overlap test" ;;
-
-let seg_withouts_test () =
-    test_lst (seg_withouts (seg_of 4. 8. 0.01)
-                           [seg_of 2. 4. 0.02 ; seg_of 4. 6. 0.011])
-             [seg_of 6. 8. 0.01]
-             "seg_withouts failed test" ;
-    test_lst (seg_withouts (seg_of 0. 1. 0.021)
-                           [seg_of (-4.) (-0.) 0.031 ; 
-                            seg_of 1. 5. 0.021001])
-             [seg_of 0. 1. 0.021]
-        "seg_without failed non-continuous test" ;;
 
 
 let seg_union_test () = 
-    test_lst [s1 ; s2] (seg_union s1 s2) "seg_union failed no-change test" ;
+    test_lst [s3 ; s2] (seg_union s3 s2) "seg_union failed no-change test" ;
     test_lst (s1 :: (seg_without s5 s1)) (seg_union s5 s1) 
         "seg_union overlap test failed" ;;
 
@@ -450,9 +430,7 @@ let seg_testing () =
     seg_ge_test () ;
     seg_eq_test () ;
     seg_neq_test () ;
-    get_segs_range_test () ;
     seg_without_test () ;
-    seg_withouts_test () ;
     seg_union_test () ;
     err_tests () ;;
 
@@ -559,36 +537,39 @@ let limit_test () =
 
 
 let merge_test () =
+    let intervals = 1000 in
     let test = sf_append x (get_segs y) in 
     let happy_test = StepF [ seg_of 0. 1. 0.1 ; seg_of 1. 2. 0.2 ] in
     let test2 = StepF [ seg_of (-4.) 0. 0.031 ; seg_of 0. 1. 0.021 ;  
                         seg_of 1. 5. 0.021001 ; seg_of 5. 7. 0.011 ] in
-    test_lst (get_segs (merge happy_test))
+    test_lst (get_segs (merge happy_test intervals))
              (get_segs happy_test)
              "merge failed no-change test" ;
-    test_lst (get_segs (merge test))
+    test_lst (get_segs (merge test intervals))
              ([ seg_of 1. 2. 0.001 ; seg_of 2. 4. 0.02 ; 
                seg_of 4. 6. 0.011 ; seg_of 6. 8. 0.01 ])
              "merge failed test" ;
-    test_lst (get_segs (merge test2))
+    test_lst (get_segs (merge test2 intervals))
              (get_segs test2)
              "merge failed boundary test" ;;
 
 
 let sf_arith_tests () = 
+    let intervals = 1000 in
     let x1, x2 = (seg_of 2. 4. 0.02, seg_of 4. 8. 0.01) in
     let y1, y2 = (seg_of 1. 3. 0.001, seg_of 3. 6. 0.011) in
     test_sfs 
-        (eadd x y) 
+        (eadd intervals x y) 
         (merge (StepF [seg_of 3. (pred 4.) (err_add x1 y1 (intr_of 3. (pred 4.))) ;
                        seg_of 4. 5. (err_add x1 y1 (intr_of 4. (pred 5.))) ;
                        seg_of 5. (pred 8.) (err_add x1 y2 (intr_of 5. (pred 8.))) ;
                        seg_of 8. 10. (err_add x1 y2 (intr_of 8. (pred 10.))) ;
-                       seg_of 10. 14. (err_add x2 y2 (intr_of 10. 14.))])) 
+                       seg_of 10. 14. (err_add x2 y2 (intr_of 10. 14.))]) 
+               intervals) 
         "eadd failed test" ;
-    test_eq (length (get_segs (esub x y))) 21
+    test_eq (length (get_segs (esub intervals x y))) 21
         "esub failed test" ;
-    test_sfs (emul x y) 
+    test_sfs (emul intervals x y) 
         (merge (StepF [seg_of 2. (pred 4.) (err_mul x1 y1 (intr_of 2. (pred 4.))) ;
                        seg_of 4. (pred 8.) (err_mul x1 y1 (intr_of 4. (pred 8.))) ;
                        seg_of 8. 12. (err_mul x1 y1 (intr_of 8. 12.)) ;
@@ -600,9 +581,10 @@ let sf_arith_tests () =
                        seg_of 16. 24. (err_mul x2 y1 (intr_of 8. 24.)) ;
                        seg_of 12. (pred 16.) (err_mul x2 y2 (intr_of 12. (pred 16.))) ;
                        seg_of 16. (pred 32.) (err_mul x2 y2 (intr_of 16. (pred 32.))) ;
-                       seg_of 32. 48. (err_mul x2 y2 (intr_of 32. 48.))]))
+                       seg_of 32. 48. (err_mul x2 y2 (intr_of 32. 48.))])
+                intervals)
         "emul failed test" ;
-    test_sfs (ediv x y) 
+    test_sfs (ediv intervals x y) 
         (merge (StepF [seg_of (2. /. 3.) (pred 1.)         (err_div x1 y1 (intr_of (2. /. 3.) (pred 1.))) ;
                        seg_of 1. (pred 2.)                 (err_div x1 y1 (intr_of 1. (pred 2.))) ;
                        seg_of 2. (pred 4.)                 (err_div x1 y1 (intr_of 2. (pred 4.))) ;
@@ -616,7 +598,8 @@ let sf_arith_tests () =
                        seg_of 8. 8.                        (err_div x2 y1 (intr_of 8. 8.)) ;
                        seg_of (4. /. 6.) (pred 1.)         (err_div x2 y2 (intr_of (4. /. 6.) (pred 1.))) ;
                        seg_of 1. (pred 2.)                 (err_div x2 y2 (intr_of 1. (pred 2.))) ;
-                       seg_of 2. (8. /. 3.)                (err_div x2 y2 (intr_of 2. (8. /. 3.)))]))
+                       seg_of 2. (8. /. 3.)                (err_div x2 y2 (intr_of 2. (8. /. 3.)))])
+                intervals)
         "ediv failed test" ;;
 
 
@@ -695,7 +678,8 @@ let sf_neq_test () = test_sfs_b (sf_neq x y) (x, y) "sf_neq failed test" ;;
 
 
 let sf_union_test () =
-    test_sfs (sf_union x y)
+    let intervals = 1000 in
+    test_sfs (sf_union intervals x y)
              (StepF [ seg_of 1. 2. 0.001 ; seg_of 2. 4. 0.02 ;
                       seg_of 4. 6. 0.011 ; seg_of 6. 8. 0.01 ])
         "sf_union failed test" ;;
@@ -768,11 +752,12 @@ let failtest =
 (* Interpreter Testing *)
 (* ---------------------- *)
 let runtest exp amem =
+    let intervals = 1000 in
     let aexp = abst_stmt exp in
     printf "\n\n%s\n" (str_amem amem) ;
     printf "\n%s\n" (str_cstmt exp) ;
     printf "\n%s\n" (str_astmt aexp) ;
-    printf "\n%s\n" (str_amem (abst_interp aexp amem)) ;
+    printf "\n%s\n" (str_amem (abst_interp aexp amem intervals)) ;
     printf "------------------\n" ;;
 
 let test = CCol (CAsgn (("x", None), CVal (CFloat 7.2)),
@@ -782,7 +767,9 @@ let test = CCol (CAsgn (("x", None), CVal (CFloat 7.2)),
 
 (* Testing with parameters *)
 let amem_init = 
-    amem_update (Id "x") 
+    let intervals = 1000 in
+    amem_update intervals
+                (Id "x") 
                 (AFloat (StepF [{int = Intr {l = 10. ; u = 14. } ; err = 0. }]))
                 amem_bot ;;
 
